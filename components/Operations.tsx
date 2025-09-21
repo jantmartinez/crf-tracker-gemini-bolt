@@ -130,10 +130,6 @@ export const OpenOperationModal: React.FC<OpenOperationModalProps> = ({ isOpen, 
                 <label htmlFor="estimatedDays" className="block text-sm font-medium text-gray-400 mb-1">Estimated Hold (days)</label>
                 <input id="estimatedDays" type="number" min="1" max="365" value={estimatedDays} onChange={(e) => setEstimatedDays(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="7" />
               </div>
-              <div>
-                <label htmlFor="leverageInput" className="block text-sm font-medium text-gray-400 mb-1">Leverage (1:X)</label>
-                <input id="leverageInput" type="number" min="1" max="500" value={leverage} onChange={(e) => setLeverage(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="5" />
-              </div>
             </div>
           </div>
 
