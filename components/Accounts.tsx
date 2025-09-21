@@ -52,8 +52,19 @@ const DeleteAccountModal: React.FC<{
   );
 };
 
-const AccountCard: React.FC<{ account: Account; onRemove: (accountId: string) => void }> = ({ account, onRemove }) => {
+const AccountCard: React.FC<{ 
+  account: Account; 
+  onRemove: (accountId: string) => void;
+  onUpdate: (accountId: string, updates: Partial<Account>) => void;
+}> = ({ account, onRemove, onUpdate }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({
+    openCloseCommission: account.openCloseCommission,
+    nightCommission: account.nightCommission
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleDelete = () => {
     try {
@@ -65,9 +76,47 @@ const AccountCard: React.FC<{ account: Account; onRemove: (accountId: string) =>
     }
   };
 
+  const handleSaveCommissions = async () => {
+    // Validate input
+    if (editData.openCloseCommission < 0 || editData.openCloseCommission > 100) {
+      setSaveMessage({ type: 'error', text: 'Open/Close commission must be between 0% and 100%' });
+      return;
+    }
+    
+    if (editData.nightCommission < 0 || editData.nightCommission > 100) {
+      setSaveMessage({ type: 'error', text: 'Night commission must be between 0% and 100%' });
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      setSaveMessage(null);
+      
+      await updateAccountCommissions(account.id, editData);
+      onUpdate(account.id, editData);
+      
+      setSaveMessage({ type: 'success', text: 'Commission settings updated successfully' });
+      setIsEditing(false);
+    } catch (error: any) {
+      console.error('Error updating commissions:', error);
+      setSaveMessage({ type: 'error', text: error.message || 'Failed to update commission settings' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditData({
+      openCloseCommission: account.openCloseCommission,
+      nightCommission: account.nightCommission
+    });
+    setIsEditing(false);
+    setSaveMessage(null);
+  };
+
   return (
     <>
-  <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 transition-all hover:border-brand-blue hover:shadow-2xl">
+      <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 transition-all hover:border-brand-blue hover:shadow-2xl">
     <div className="flex justify-between items-start">
       <div>
         <h3 className="text-xl font-bold text-gray-200">{account.name}</h3>
@@ -77,6 +126,13 @@ const AccountCard: React.FC<{ account: Account; onRemove: (accountId: string) =>
         <span className={`px-3 py-1 text-xs font-semibold rounded-full ${account.status === 'active' ? 'bg-green-500/20 text-brand-green' : 'bg-gray-600 text-gray-300'}`}>
           {account.status}
         </span>
+        <button
+          onClick={() => setIsEditing(!isEditing)}
+          className="text-gray-400 hover:text-brand-blue transition-colors p-1"
+          title="Edit commission settings"
+        >
+          <i className="ri-settings-3-line text-lg"></i>
+        </button>
         <button
           onClick={() => setShowDeleteModal(true)}
           className="text-gray-400 hover:text-brand-red transition-colors p-1"
@@ -90,6 +146,89 @@ const AccountCard: React.FC<{ account: Account; onRemove: (accountId: string) =>
       <p className="text-gray-400">Starting Balance</p>
       <p className="text-3xl font-mono font-bold text-brand-blue">${account.startingBalance.toLocaleString()}</p>
     </div>
+    
+    {/* Commission Settings Section */}
+    <div className="mt-6 pt-4 border-t border-gray-700">
+      <div className="flex justify-between items-center mb-3">
+        <h4 className="text-sm font-semibold text-gray-300">Commission Settings</h4>
+      </div>
+      
+      {saveMessage && (
+        <div className={`px-3 py-2 rounded-lg mb-3 text-sm ${
+          saveMessage.type === 'success' 
+            ? 'bg-green-100 border border-green-400 text-green-700' 
+            : 'bg-red-100 border border-red-400 text-red-700'
+        }`}>
+          {saveMessage.text}
+        </div>
+      )}
+      
+      {isEditing ? (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">
+              Open/Close Commission (%)
+              <span className="ml-1 text-gray-500" title="Commission charged when opening and closing positions">ⓘ</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              value={editData.openCloseCommission}
+              onChange={(e) => setEditData(prev => ({ ...prev, openCloseCommission: parseFloat(e.target.value) || 0 }))}
+              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1 text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-brand-blue"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">
+              Night Commission (% per day)
+              <span className="ml-1 text-gray-500" title="Daily commission charged for overnight positions">ⓘ</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              value={editData.nightCommission}
+              onChange={(e) => setEditData(prev => ({ ...prev, nightCommission: parseFloat(e.target.value) || 0 }))}
+              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1 text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-brand-blue"
+            />
+          </div>
+          <div className="flex justify-end space-x-2 pt-2">
+            <button
+              onClick={handleCancelEdit}
+              disabled={isSaving}
+              className="px-3 py-1 text-xs rounded text-gray-300 hover:bg-gray-700 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveCommissions}
+              disabled={isSaving}
+              className={`px-3 py-1 text-xs rounded font-semibold transition-colors ${
+                isSaving
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  : 'bg-brand-blue text-white hover:bg-blue-500'
+              }`}
+            >
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p className="text-gray-400">Open/Close</p>
+            <p className="font-semibold text-gray-200">{account.openCloseCommission}%</p>
+          </div>
+          <div>
+            <p className="text-gray-400">Night (per day)</p>
+            <p className="font-semibold text-gray-200">{account.nightCommission}%</p>
+          </div>
+        </div>
+      )}
+    </div>
   </div>
       <DeleteAccountModal
         isOpen={showDeleteModal}
@@ -101,36 +240,18 @@ const AccountCard: React.FC<{ account: Account; onRemove: (accountId: string) =>
   );
 };
 
-const AddAccountModal: React.FC<{ 
-  isOpen: boolean; 
-  onClose: () => void; 
-  onAdd: (account: { 
-    name: string; 
-    startingBalance: number; 
-    openCloseCommission?: number; 
-    nightCommission?: number; 
-  }) => void 
-}> = ({ isOpen, onClose, onAdd }) => {
+const AddAccountModal: React.FC<{ isOpen: boolean; onClose: () => void; onAdd: (account: { name: string; startingBalance: number }) => void }> = ({ isOpen, onClose, onAdd }) => {
   const [name, setName] = useState('');
   const [balance, setBalance] = useState('');
-  const [openCloseCommission, setOpenCloseCommission] = useState('0.25');
-  const [nightCommission, setNightCommission] = useState('7.0');
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name && balance) {
-      onAdd({ 
-        name, 
-        startingBalance: parseFloat(balance),
-        openCloseCommission: parseFloat(openCloseCommission),
-        nightCommission: parseFloat(nightCommission)
-      });
+      onAdd({ name, startingBalance: parseFloat(balance) });
       setName('');
       setBalance('');
-      setOpenCloseCommission('0.25');
-      setNightCommission('7.0');
       onClose();
     }
   };
@@ -268,7 +389,7 @@ const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount, removeAccount
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {accounts.map(acc => <AccountCard key={acc.id} account={acc} onRemove={removeAccount} />)}
+        {accounts.map(acc => <AccountCard key={acc.id} account={acc} onRemove={removeAccount} onUpdate={() => {}} />)}
       </div>
 
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
