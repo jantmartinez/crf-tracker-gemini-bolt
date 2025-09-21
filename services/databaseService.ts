@@ -334,6 +334,57 @@ export const fetchUserProfile = async () => {
   };
 };
 
+export const updateUserProfile = async (profileData: {
+  base_currency?: string;
+  risk_per_trade?: number;
+  default_leverage?: number;
+}) => {
+  // First try to update existing profile
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('id')
+    .single();
+
+  if (existingProfile) {
+    // Update existing profile
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({
+        base_currency: profileData.base_currency,
+        risk_per_trade: profileData.risk_per_trade,
+        default_leverage: profileData.default_leverage
+      })
+      .eq('id', existingProfile.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating user profile:', error);
+      throw error;
+    }
+
+    return data;
+  } else {
+    // Create new profile if none exists
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert({
+        base_currency: profileData.base_currency || 'USD',
+        risk_per_trade: profileData.risk_per_trade || 2.5,
+        default_leverage: profileData.default_leverage || 5
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating user profile:', error);
+      throw error;
+    }
+
+    return data;
+  }
+};
+
 export const createUserProfile = async (profileData: {
   base_currency?: string;
   risk_per_trade?: number;
@@ -342,7 +393,7 @@ export const createUserProfile = async (profileData: {
   const { data, error } = await supabase
     .from('profiles')
     .insert({
-      base_currency: profileData.base_currency || 'USD',
+      base_currency: profileData.base_currency || 'USD', 
       risk_per_trade: profileData.risk_per_trade || 2.5,
       default_leverage: profileData.default_leverage || 5
     })

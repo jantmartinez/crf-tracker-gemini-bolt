@@ -1,13 +1,19 @@
 
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import type { Account } from '../types';
-import { DEFAULT_SETTINGS } from '../constants';
+import { fetchUserProfile, updateUserProfile } from '../services/databaseService';
 
 interface AccountsProps {
   accounts: Account[];
   addAccount: (account: Omit<Account, 'id' | 'createdAt' | 'status'>) => void;
 }
 
+interface UserProfile {
+  base_currency: string;
+  risk_per_trade: number;
+  default_leverage: number;
+}
 const AccountCard: React.FC<{ account: Account }> = ({ account }) => (
   <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 transition-all hover:border-brand-blue hover:shadow-2xl">
     <div className="flex justify-between items-start">
@@ -84,12 +90,51 @@ const AddAccountModal: React.FC<{ isOpen: boolean; onClose: () => void; onAdd: (
 
 const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<UserProfile>({
+    base_currency: 'USD',
+    risk_per_trade: 2.5,
+    default_leverage: 5
+  });
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
 
-  const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const {name, value} = e.target;
-      setSettings(prev => ({...prev, [name]: name === 'baseCurrency' ? value : parseFloat(value) }));
-  }
+  // Load user profile settings on component mount
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        setIsLoadingSettings(true);
+        setSettingsError(null);
+        const profile = await fetchUserProfile();
+        setSettings(profile);
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+        setSettingsError('Failed to load user settings');
+        // Keep default settings on error
+      } finally {
+        setIsLoadingSettings(false);
+      }
+    };
+
+    loadUserProfile();
+  }, []);
+  const handleSettingsChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    const newSettings = {
+      ...settings,
+      [name]: name === 'base_currency' ? value : parseFloat(value)
+    };
+    
+    setSettings(newSettings);
+    
+    // Save to database
+    try {
+      await updateUserProfile(newSettings);
+      setSettingsError(null);
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      setSettingsError('Failed to save settings');
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -109,24 +154,36 @@ const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount }) => {
 
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
           <h2 className="text-xl font-bold text-gray-200 mb-6">Settings</h2>
+          {settingsError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4">
+              {settingsError}
+            </div>
+          )}
+          {isLoadingSettings ? (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-blue mx-auto"></div>
+              <p className="mt-2 text-gray-400">Loading settings...</p>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                  <label htmlFor="baseCurrency" className="block text-sm font-medium text-gray-400 mb-1">Base Currency</label>
-                  <select id="baseCurrency" name="baseCurrency" value={settings.baseCurrency} onChange={handleSettingsChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue">
+                  <label htmlFor="base_currency" className="block text-sm font-medium text-gray-400 mb-1">Base Currency</label>
+                  <select id="base_currency" name="base_currency" value={settings.base_currency} onChange={handleSettingsChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue">
                       <option>USD</option>
                       <option>EUR</option>
                       <option>GBP</option>
                   </select>
               </div>
               <div>
-                  <label htmlFor="riskPerTrade" className="block text-sm font-medium text-gray-400 mb-1">Risk per Trade (%)</label>
-                  <input type="number" id="riskPerTrade" name="riskPerTrade" value={settings.riskPerTrade} onChange={handleSettingsChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" />
+                  <label htmlFor="risk_per_trade" className="block text-sm font-medium text-gray-400 mb-1">Risk per Trade (%)</label>
+                  <input type="number" step="0.1" id="risk_per_trade" name="risk_per_trade" value={settings.risk_per_trade} onChange={handleSettingsChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" />
               </div>
                <div>
-                  <label htmlFor="defaultLeverage" className="block text-sm font-medium text-gray-400 mb-1">Default Leverage</label>
-                  <input type="number" id="defaultLeverage" name="defaultLeverage" value={settings.defaultLeverage} onChange={handleSettingsChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" />
+                  <label htmlFor="default_leverage" className="block text-sm font-medium text-gray-400 mb-1">Default Leverage</label>
+                  <input type="number" id="default_leverage" name="default_leverage" value={settings.default_leverage} onChange={handleSettingsChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" />
               </div>
           </div>
+          )}
       </div>
 
 
