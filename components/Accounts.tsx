@@ -149,7 +149,11 @@ const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount }) => {
       setIsSaving(true);
       setSaveMessage(null);
       setSettingsError(null);
-      
+
+      const newSettings: UserProfile = {
+        ...settings
+      };
+
       await updateUserProfile(newSettings);
       setOriginalSettings(newSettings);
       setSaveMessage({ type: 'success', text: 'Profile updated successfully' });
