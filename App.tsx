@@ -9,7 +9,7 @@ import Operations from './components/Operations';
 import type { Page, Account, Trade, WatchlistItem } from './types';
 import { MOCK_WATCHLIST } from './constants';
 import { TradeStatus, TradeType } from './types';
-import { fetchAccounts, createAccount, fetchTrades, createTrade, closeTrade, fetchWatchlist, debugFetchProfiles } from './services/databaseService';
+import { fetchAccounts, createAccount, fetchTrades, createTrade, closeTradeInDb, fetchWatchlist, debugFetchProfiles } from './services/databaseService';
 
 
 const App: React.FC = () => {
