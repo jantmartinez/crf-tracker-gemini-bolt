@@ -517,13 +517,13 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                     </button>
                     </>
                   )}
-                    {showDeleteButton && (
+                  {showDeleteButton && (
                     <>
-                    {trade.status === TradeStatus.CLOSED && (
-                      <button onClick={() => setTradeToView(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-blue-500/20 text-brand-blue hover:bg-blue-500/40">
-                        Details
-                      </button>
-                    )}
+                      {trade.status === TradeStatus.CLOSED && (
+                        <button onClick={() => setTradeToView(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-blue-500/20 text-brand-blue hover:bg-blue-500/40">
+                          Details
+                        </button>
+                      )}
                       <button 
                         onClick={() => handleDeleteOperation(trade)} 
                         className="text-gray-400 hover:text-brand-red transition-colors p-1" 
@@ -532,7 +532,7 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                         <i className="ri-delete-bin-line text-base"></i>
                       </button>
                     </>
-                    )}
+                  )}
                   </div>
                 </td>
               </tr>
