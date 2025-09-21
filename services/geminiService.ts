@@ -69,7 +69,7 @@ export const fetchStockAnalysis = async (ticker: string): Promise<StockAnalysis>
   }
   
   try {
-    const prompt = `Generate a realistic but fictional stock analysis for the ticker symbol: ${ticker.toUpperCase()}. The company should be plausible for the given ticker. Provide a comprehensive analysis including company info, analyst consensus, technical indicators, and recent news articles. Format the entire response as a single JSON object conforming to the provided schema. Ensure the news timestamps are recent and realistic.`;
+    const prompt = `Generate a real stock analysis for the ticker symbol: ${ticker.toUpperCase()}. The company should be plausible for the given ticker. Provide a comprehensive analysis including company info, analyst consensus, technical indicators, and recent news articles. Format the entire response as a single JSON object conforming to the provided schema. Ensure the news timestamps are recent and realistic.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
