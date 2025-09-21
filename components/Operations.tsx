@@ -237,6 +237,189 @@ export const CloseOperationModal: React.FC<CloseOperationModalProps> = ({ trade,
     );
 }
 
+const PositionDetailsModal: React.FC<{
+  trade: Trade;
+  account: Account | undefined;
+  isOpen: boolean;
+  onClose: () => void;
+}> = ({ trade, account, isOpen, onClose }) => {
+  if (!isOpen) return null;
+
+  // Calculate position metrics
+  const positionValue = trade.quantity * trade.openPrice;
+  const leverage = 5; // Default leverage - in real app this would come from trade data
+  const requiredMargin = positionValue / leverage;
+  
+  // Commission calculations (using account defaults or fallbacks)
+  const openCloseCommission = account?.openCloseCommission || 0.25;
+  const nightCommission = account?.nightCommission || 7.0;
+  
+  const openCommissionAmount = (positionValue * openCloseCommission) / 100;
+  const closeCommissionAmount = (positionValue * openCloseCommission) / 100;
+  
+  // Calculate days held
+  const openDate = new Date(trade.openAt);
+  const currentDate = new Date();
+  const daysHeld = Math.ceil((currentDate.getTime() - openDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Night commission calculation (annual rate / 365 * days held)
+  const nightCommissionPerDay = (positionValue * nightCommission) / 100 / 365;
+  const totalNightCommissions = nightCommissionPerDay * daysHeld;
+  
+  const totalCommissions = openCommissionAmount + closeCommissionAmount + totalNightCommissions;
+  
+  // Current P&L (simplified - would need real-time price in production)
+  const currentPrice = trade.openPrice * 1.02; // Mock 2% gain for demo
+  const grossPnl = trade.tradeType === TradeType.LONG 
+    ? (currentPrice - trade.openPrice) * trade.quantity
+    : (trade.openPrice - currentPrice) * trade.quantity;
+  const netPnl = grossPnl - totalCommissions;
+  
+  // Breakeven price
+  const breakevenPrice = trade.tradeType === TradeType.LONG
+    ? trade.openPrice + (totalCommissions / trade.quantity)
+    : trade.openPrice - (totalCommissions / trade.quantity);
+
+  return (
+    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-4xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-200">Position Details - {trade.symbol}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-200 text-2xl">×</button>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Position Overview */}
+          <div className="space-y-6">
+            <div className="bg-gray-700 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-gray-200 mb-4">Position Overview</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-400">Symbol</p>
+                  <p className="font-bold text-gray-200">{trade.symbol}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Position Type</p>
+                  <p className={`font-bold capitalize ${trade.tradeType === TradeType.LONG ? 'text-brand-green' : 'text-brand-red'}`}>
+                    {trade.tradeType}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Quantity</p>
+                  <p className="font-bold text-gray-200">{trade.quantity}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Open Price</p>
+                  <p className="font-bold text-gray-200">${trade.openPrice.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Current Price</p>
+                  <p className="font-bold text-gray-200">${currentPrice.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Position Value</p>
+                  <p className="font-bold text-gray-200">${positionValue.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Leverage</p>
+                  <p className="font-bold text-brand-blue">1:{leverage}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Required Margin</p>
+                  <p className="font-bold text-brand-blue">${requiredMargin.toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Timing Information */}
+            <div className="bg-gray-700 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-gray-200 mb-4">Timing</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-400">Open Date</p>
+                  <p className="font-bold text-gray-200">{openDate.toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Open Time</p>
+                  <p className="font-bold text-gray-200">{openDate.toLocaleTimeString()}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Days Held</p>
+                  <p className="font-bold text-gray-200">{daysHeld} days</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Account</p>
+                  <p className="font-bold text-gray-200">{account?.name || 'Unknown'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Financial Details */}
+          <div className="space-y-6">
+            <div className="bg-gray-700 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-gray-200 mb-4">P&L Analysis</h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Gross P&L</span>
+                  <span className={`font-bold ${grossPnl >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>
+                    ${grossPnl.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Total Commissions</span>
+                  <span className="font-bold text-brand-red">-${totalCommissions.toFixed(2)}</span>
+                </div>
+                <div className="border-t border-gray-600 pt-2 flex justify-between">
+                  <span className="text-gray-200 font-semibold">Net P&L</span>
+                  <span className={`font-bold text-lg ${netPnl >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>
+                    ${netPnl.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Breakeven Price</span>
+                  <span className="font-bold text-yellow-400">${breakevenPrice.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Commission Breakdown */}
+            <div className="bg-gray-700 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-gray-200 mb-4">Commission Breakdown</h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Open Commission ({openCloseCommission}%)</span>
+                  <span className="font-bold text-brand-red">${openCommissionAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Close Commission ({openCloseCommission}%)</span>
+                  <span className="font-bold text-brand-red">${closeCommissionAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Night Commission ({nightCommission}% annual)</span>
+                  <span className="font-bold text-brand-red">${totalNightCommissions.toFixed(2)}</span>
+                </div>
+                <div className="text-xs text-gray-500">
+                  Night commission: ${nightCommissionPerDay.toFixed(4)}/day × {daysHeld} days
+                </div>
+                <div className="border-t border-gray-600 pt-2 flex justify-between">
+                  <span className="text-gray-200 font-semibold">Total Commissions</span>
+                  <span className="font-bold text-brand-red">${totalCommissions.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex justify-end mt-8 pt-4 border-t border-gray-700">
+          <button onClick={onClose} className="px-6 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-500 transition-colors">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ============================
 // MAIN PAGE COMPONENT
@@ -277,11 +460,13 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [tradeToClose, setTradeToClose] = useState<Trade | null>(null);
   const [tradeToDelete, setTradeToDelete] = useState<Trade | null>(null);
+  const [tradeToView, setTradeToView] = useState<Trade | null>(null);
 
   const openTrades = trades.filter(t => t.status === TradeStatus.OPEN);
   const closedTrades = [...trades.filter(t => t.status === TradeStatus.CLOSED)].sort((a, b) => new Date(b.closedAt!).getTime() - new Date(a.closedAt!).getTime());
 
   const getAccountName = (id: string) => accounts.find(acc => acc.id === id)?.name || 'Unknown';
+  const getAccount = (id: string) => accounts.find(acc => acc.id === id);
 
   const handleDeleteOperation = (trade: Trade) => {
     setTradeToDelete(trade);
@@ -323,11 +508,20 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                 <td className="p-4 text-center">
                   <div className="flex justify-center items-center space-x-2">
                   {trade.status === TradeStatus.OPEN && (
+                    <>
+                      <button onClick={() => setTradeToView(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-blue-500/20 text-brand-blue hover:bg-blue-500/40">
+                        Details
+                      </button>
                     <button onClick={() => setTradeToClose(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-red-500/20 text-brand-red hover:bg-red-500/40">
                       Close
                     </button>
                   )}
                     {showDeleteButton && (
+                    {trade.status === TradeStatus.CLOSED && (
+                      <button onClick={() => setTradeToView(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-blue-500/20 text-brand-blue hover:bg-blue-500/40">
+                        Details
+                      </button>
+                    )}
                       <button 
                         onClick={() => handleDeleteOperation(trade)} 
                         className="text-gray-400 hover:text-brand-red transition-colors p-1" 
@@ -335,6 +529,7 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                       >
                         <i className="ri-delete-bin-line text-base"></i>
                       </button>
+                    </>
                     )}
                   </div>
                 </td>
@@ -381,6 +576,14 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
           onClose={() => setTradeToDelete(null)}
           onConfirm={confirmDeleteOperation}
           trade={tradeToDelete}
+        />
+      )}
+      {tradeToView && (
+        <PositionDetailsModal
+          trade={tradeToView}
+          account={getAccount(tradeToView.accountId)}
+          isOpen={!!tradeToView}
+          onClose={() => setTradeToView(null)}
         />
       )}
     </>
