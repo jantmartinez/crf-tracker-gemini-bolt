@@ -166,7 +166,7 @@ const App: React.FC = () => {
       case 'operations':
         return <Operations trades={trades} accounts={accounts} addTrade={addTrade} closeTrade={closeTrade} deleteTrade={deleteTrade} />;
       case 'accounts':
-        return <Accounts accounts={accounts} addAccount={addAccount} removeAccount={removeAccount} />;
+        return <Accounts accounts={accounts} addAccount={addAccount} removeAccount={removeAccount} updateAccount={updateAccount} />;
       default:
         return <Dashboard accounts={accounts} trades={trades} watchlist={watchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} closeTrade={closeTrade} />;
     }

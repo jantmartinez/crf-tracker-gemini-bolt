@@ -9,6 +9,8 @@ export const MOCK_ACCOUNTS: Account[] = [
     startingBalance: 10000,
     createdAt: '2023-01-15T09:00:00Z',
     status: 'active',
+    openCloseCommission: 0.25,
+    nightCommission: 7.0,
   },
   {
     id: 'acc_2',
@@ -16,6 +18,8 @@ export const MOCK_ACCOUNTS: Account[] = [
     startingBalance: 25000,
     createdAt: '2023-03-20T14:30:00Z',
     status: 'active',
+    openCloseCommission: 0.15,
+    nightCommission: 5.0,
   },
 ];
 

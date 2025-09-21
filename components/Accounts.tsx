@@ -250,7 +250,14 @@ const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount, removeAccount
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {accounts.map(acc => <AccountCard key={acc.id} account={acc} onRemove={removeAccount} />)}
+        {accounts.map(acc => (
+          <AccountCard 
+            key={acc.id} 
+            account={acc} 
+            onRemove={removeAccount} 
+            onUpdate={updateAccount}
+          />
+        ))}
       </div>
 
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg">

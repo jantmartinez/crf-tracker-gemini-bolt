@@ -31,6 +31,8 @@ export interface Account {
   startingBalance: number;
   createdAt: string;
   status: 'active' | 'inactive';
+  openCloseCommission: number; // Percentage (0-100)
+  nightCommission: number; // Percentage (0-100)
 }
 
 export interface WatchlistItem {

@@ -22,7 +22,9 @@ export const fetchAccounts = async (): Promise<Account[]> => {
     name: account.name,
     startingBalance: account.starting_balance,
     createdAt: account.created_at,
-    status: (account.is_active ? 'active' : 'inactive') as 'active' | 'inactive'
+    status: (account.is_active ? 'active' : 'inactive') as 'active' | 'inactive',
+    openCloseCommission: account.open_close_commission || 0.25,
+    nightCommission: account.night_commission || 7.0
   }));
 };
 
@@ -33,7 +35,9 @@ export const createAccount = async (account: Omit<Account, 'id' | 'createdAt' | 
       name: account.name,
       starting_balance: account.startingBalance,
       current_balance: account.startingBalance,
-      is_active: true
+      is_active: true,
+      open_close_commission: account.openCloseCommission || 0.25,
+      night_commission: account.nightCommission || 7.0
     })
     .select()
     .single();
@@ -48,7 +52,9 @@ export const createAccount = async (account: Omit<Account, 'id' | 'createdAt' | 
     name: data.name,
     startingBalance: data.starting_balance,
     createdAt: data.created_at,
-    status: 'active'
+    status: 'active',
+    openCloseCommission: data.open_close_commission,
+    nightCommission: data.night_commission
   };
 };
 
@@ -99,6 +105,37 @@ export const deleteAccount = async (accountId: string): Promise<void> => {
   }
 
   console.log('Account deleted successfully:', accountId);
+};
+
+// Update account commission settings
+export const updateAccountCommissions = async (
+  accountId: string, 
+  commissions: { openCloseCommission: number; nightCommission: number }
+): Promise<void> => {
+  // Validate commission rates
+  if (commissions.openCloseCommission < 0 || commissions.openCloseCommission > 100) {
+    throw new Error('Open/Close commission must be between 0% and 100%');
+  }
+  
+  if (commissions.nightCommission < 0 || commissions.nightCommission > 100) {
+    throw new Error('Night commission must be between 0% and 100%');
+  }
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({
+      open_close_commission: commissions.openCloseCommission,
+      night_commission: commissions.nightCommission,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', accountId);
+
+  if (error) {
+    console.error('Error updating account commissions:', error);
+    throw new Error(`Failed to update commission settings: ${error.message}`);
+  }
+
+  console.log('Account commissions updated successfully:', accountId);
 };
 
 // Symbol operations
