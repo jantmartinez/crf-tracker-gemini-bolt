@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useEffect } from 'react';
 import type { Account } from '../types';
-import { fetchUserProfile, updateUserProfile, deleteAccount } from '../services/databaseService';
+import { fetchUserProfile, updateUserProfile, deleteAccount, updateAccountCommissions } from '../services/databaseService';
 
 interface AccountsProps {
   accounts: Account[];
