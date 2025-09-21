@@ -70,10 +70,11 @@ const App: React.FC = () => {
     deleteAccount(accountId)
       .then(() => {
         setAccounts(prev => prev.filter(acc => acc.id !== accountId));
+        setError(null); // Clear any previous errors
       })
       .catch(err => {
         console.error('Error deleting account:', err);
-        setError('Failed to delete account');
+        setError(err.message || 'Failed to delete account');
       });
   }, []);
   

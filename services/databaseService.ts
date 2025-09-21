@@ -51,6 +51,23 @@ export const createAccount = async (account: Omit<Account, 'id' | 'createdAt' | 
 };
 
 export const deleteAccount = async (accountId: string): Promise<void> => {
+  // First, check if there are any operations associated with this account
+  const { data: operations, error: checkError } = await supabase
+    .from('operation_groups')
+    .select('id')
+    .eq('account_id', accountId)
+    .limit(1);
+
+  if (checkError) {
+    console.error('Error checking for associated operations:', checkError);
+    throw new Error('Failed to verify account can be deleted');
+  }
+
+  if (operations && operations.length > 0) {
+    throw new Error('Cannot delete account with existing operations. Please close or delete all operations first.');
+  }
+
+  // Delete the account
   const { error } = await supabase
     .from('accounts')
     .delete()
@@ -58,7 +75,7 @@ export const deleteAccount = async (accountId: string): Promise<void> => {
 
   if (error) {
     console.error('Error deleting account:', error);
-    throw error;
+    throw new Error('Failed to delete account from database');
   }
 };
 

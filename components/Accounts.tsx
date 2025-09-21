@@ -56,8 +56,13 @@ const AccountCard: React.FC<{ account: Account; onRemove: (accountId: string) =>
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const handleDelete = () => {
-    onRemove(account.id);
-    setShowDeleteModal(false);
+    try {
+      onRemove(account.id);
+      setShowDeleteModal(false);
+    } catch (error) {
+      // Error handling is done in the parent component
+      setShowDeleteModal(false);
+    }
   };
 
   return (
