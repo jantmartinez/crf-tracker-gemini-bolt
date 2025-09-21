@@ -315,20 +315,9 @@ export const fetchUserProfile = async () => {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .single();
+    .maybeSingle();
 
   if (error) {
-    // Check if error is due to no profile existing (expected for new users)
-    if (error.code === 'PGRST116') {
-      // No profile exists - this is normal for new users, return defaults
-      return {
-        base_currency: 'USD',
-        risk_per_trade: 2.5,
-        default_leverage: 5
-      };
-    }
-    
-    // For other errors, log and throw
     console.error('Error fetching user profile:', error);
     throw error;
   }
@@ -358,7 +347,7 @@ export const updateUserProfile = async (profileData: {
   const { data: existingProfile } = await supabase
     .from('profiles')
     .select('id')
-    .single();
+    .maybeSingle();
 
   if (existingProfile) {
     // Update existing profile
