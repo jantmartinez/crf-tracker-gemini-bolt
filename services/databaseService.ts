@@ -364,15 +364,14 @@ export const updateUserProfile = async (profileData: {
         default_leverage: profileData.default_leverage
       })
       .eq('id', existingProfile.id)
-      .select()
-      .single();
+      .select();
 
     if (error) {
       console.error('Error updating user profile:', error);
       throw error;
     }
 
-    return data;
+    return data[0];
   } else {
     // Create new profile if none exists
     const { data, error } = await supabase
@@ -382,15 +381,14 @@ export const updateUserProfile = async (profileData: {
         risk_per_trade: profileData.risk_per_trade || 2.5,
         default_leverage: profileData.default_leverage || 5
       })
-      .select()
-      .single();
+      .select();
 
     if (error) {
       console.error('Error creating user profile:', error);
       throw error;
     }
 
-    return data;
+    return data[0];
   }
 };
 
@@ -406,13 +404,12 @@ export const createUserProfile = async (profileData: {
       risk_per_trade: profileData.risk_per_trade || 2.5,
       default_leverage: profileData.default_leverage || 5
     })
-    .select()
-    .single();
+    .select();
 
   if (error) {
     console.error('Error creating user profile:', error);
     throw error;
   }
 
-  return data;
+  return data[0];
 };
