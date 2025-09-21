@@ -95,8 +95,15 @@ const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount }) => {
     risk_per_trade: 2.5,
     default_leverage: 5
   });
+  const [originalSettings, setOriginalSettings] = useState<UserProfile>({
+    base_currency: 'USD',
+    risk_per_trade: 2.5,
+    default_leverage: 5
+  });
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Load user profile settings on component mount
   useEffect(() => {
@@ -106,6 +113,7 @@ const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount }) => {
         setSettingsError(null);
         const profile = await fetchUserProfile();
         setSettings(profile);
+        setOriginalSettings(profile);
       } catch (error) {
         console.error('Error loading user profile:', error);
         setSettingsError('Failed to load user settings');
@@ -117,7 +125,8 @@ const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount }) => {
 
     loadUserProfile();
   }, []);
-  const handleSettingsChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  
+  const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     const newSettings = {
       ...settings,
@@ -125,16 +134,35 @@ const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount }) => {
     };
     
     setSettings(newSettings);
-    
-    // Save to database
+    // Clear any previous save messages when user makes changes
+    setSaveMessage(null);
+  };
+
+  const handleSaveSettings = async () => {
+    // Validate form data
+    if (!settings.base_currency || settings.risk_per_trade <= 0 || settings.default_leverage <= 0) {
+      setSaveMessage({ type: 'error', text: 'Please ensure all fields have valid values' });
+      return;
+    }
+
     try {
-      await updateUserProfile(newSettings);
+      setIsSaving(true);
+      setSaveMessage(null);
       setSettingsError(null);
+      
+      await updateUserProfile(newSettings);
+      setOriginalSettings(newSettings);
+      setSaveMessage({ type: 'success', text: 'Profile updated successfully' });
     } catch (error) {
       console.error('Error updating user profile:', error);
-      setSettingsError('Failed to save settings');
+      setSaveMessage({ type: 'error', text: 'Failed to save changes. Please try again.' });
+    } finally {
+      setIsSaving(false);
     }
   };
+
+  // Check if settings have changed
+  const hasUnsavedChanges = JSON.stringify(settings) !== JSON.stringify(originalSettings);
 
   return (
     <div className="space-y-8">
@@ -159,12 +187,22 @@ const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount }) => {
               {settingsError}
             </div>
           )}
+          {saveMessage && (
+            <div className={`px-4 py-3 rounded-lg mb-4 ${
+              saveMessage.type === 'success' 
+                ? 'bg-green-100 border border-green-400 text-green-700' 
+                : 'bg-red-100 border border-red-400 text-red-700'
+            }`}>
+              {saveMessage.text}
+            </div>
+          )}
           {isLoadingSettings ? (
             <div className="text-center py-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-blue mx-auto"></div>
               <p className="mt-2 text-gray-400">Loading settings...</p>
             </div>
           ) : (
+            <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                   <label htmlFor="base_currency" className="block text-sm font-medium text-gray-400 mb-1">Base Currency</label>
@@ -176,13 +214,34 @@ const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount }) => {
               </div>
               <div>
                   <label htmlFor="risk_per_trade" className="block text-sm font-medium text-gray-400 mb-1">Risk per Trade (%)</label>
-                  <input type="number" step="0.1" id="risk_per_trade" name="risk_per_trade" value={settings.risk_per_trade} onChange={handleSettingsChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" />
+                  <input type="number" step="0.1" min="0.1" max="100" id="risk_per_trade" name="risk_per_trade" value={settings.risk_per_trade} onChange={handleSettingsChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" />
               </div>
                <div>
                   <label htmlFor="default_leverage" className="block text-sm font-medium text-gray-400 mb-1">Default Leverage</label>
-                  <input type="number" id="default_leverage" name="default_leverage" value={settings.default_leverage} onChange={handleSettingsChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" />
+                  <input type="number" min="1" max="500" id="default_leverage" name="default_leverage" value={settings.default_leverage} onChange={handleSettingsChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" />
               </div>
           </div>
+          <div className="flex justify-end mt-6">
+            <button
+              onClick={handleSaveSettings}
+              disabled={isSaving || !hasUnsavedChanges}
+              className={`px-6 py-2 rounded-lg font-bold transition-colors ${
+                isSaving || !hasUnsavedChanges
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  : 'bg-brand-blue text-white hover:bg-blue-500'
+              }`}
+            >
+              {isSaving ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Saving...
+                </div>
+              ) : (
+                'Save Changes'
+              )}
+            </button>
+          </div>
+          </>
           )}
       </div>
 
