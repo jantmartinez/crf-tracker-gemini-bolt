@@ -25,16 +25,9 @@ export const fetchAccounts = async (): Promise<Account[]> => {
 };
 
 export const createAccount = async (account: Omit<Account, 'id' | 'createdAt' | 'status'>): Promise<Account> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
-    throw new Error('User not authenticated');
-  }
-
   const { data, error } = await supabase
     .from('accounts')
     .insert({
-      user_id: user.id,
       name: account.name,
       starting_balance: account.startingBalance,
       current_balance: account.startingBalance,
@@ -151,12 +144,6 @@ export const fetchTrades = async (): Promise<Trade[]> => {
 };
 
 export const createTrade = async (tradeData: Omit<Trade, 'id' | 'status' | 'openAt' | 'pnl'>): Promise<Trade> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
-    throw new Error('User not authenticated');
-  }
-
   // Get or create symbol
   const symbolId = await fetchOrCreateSymbol(tradeData.symbol);
 
@@ -164,7 +151,6 @@ export const createTrade = async (tradeData: Omit<Trade, 'id' | 'status' | 'open
   const { data: group, error: groupError } = await supabase
     .from('operation_groups')
     .insert({
-      user_id: user.id,
       account_id: tradeData.accountId,
       symbol_id: symbolId,
       status: 'open'
@@ -287,43 +273,10 @@ export const fetchWatchlist = async (): Promise<WatchlistItem[]> => {
 
 // User profile operations
 export const fetchUserProfile = async () => {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
-    throw new Error('User not authenticated');
-  }
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('user_id', user.id)
-    .single();
-
-  if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-    console.error('Error fetching user profile:', error);
-    throw error;
-  }
-
-  if (!data) {
-    // Create default profile
-    const { data: newProfile, error: createError } = await supabase
-      .from('profiles')
-      .insert({
-        user_id: user.id,
-        base_currency: 'USD',
-        risk_per_trade: 2.5,
-        default_leverage: 5
-      })
-      .select()
-      .single();
-
-    if (createError) {
-      console.error('Error creating user profile:', createError);
-      throw createError;
-    }
-
-    return newProfile;
-  }
-
-  return data;
+  // Return default profile since authentication is disabled
+  return {
+    base_currency: 'USD',
+    risk_per_trade: 2.5,
+    default_leverage: 5
+  };
 };
