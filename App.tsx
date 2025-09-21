@@ -1,31 +1,65 @@
 
 import React, { useState, useCallback } from 'react';
+import { useEffect } from 'react';
 import { DashboardIcon, IntelligenceIcon, AccountsIcon, LogoIcon, OperationsIcon } from './components/Icons';
 import Dashboard from './components/Dashboard';
 import Intelligence from './components/Intelligence';
 import Accounts from './components/Accounts';
 import Operations from './components/Operations';
 import type { Page, Account, Trade, WatchlistItem } from './types';
-import { MOCK_ACCOUNTS, MOCK_TRADES, MOCK_WATCHLIST } from './constants';
+import { MOCK_WATCHLIST } from './constants';
 import { TradeStatus, TradeType } from './types';
+import { fetchAccounts, createAccount, fetchTrades, createTrade, closeTrade, fetchWatchlist } from './services/databaseService';
 
 
 const App: React.FC = () => {
   const [activePage, setActivePage] = useState<Page>('dashboard');
-  const [accounts, setAccounts] = useState<Account[]>(MOCK_ACCOUNTS);
-  const [trades, setTrades] = useState<Trade[]>(MOCK_TRADES);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [trades, setTrades] = useState<Trade[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>(MOCK_WATCHLIST);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load data from Supabase on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const [accountsData, tradesData, watchlistData] = await Promise.all([
+          fetchAccounts(),
+          fetchTrades(),
+          fetchWatchlist()
+        ]);
+        
+        setAccounts(accountsData);
+        setTrades(tradesData);
+        setWatchlist(watchlistData);
+      } catch (err) {
+        console.error('Error loading data:', err);
+        setError('Failed to load data from database');
+        // Fall back to empty arrays to prevent app crash
+        setAccounts([]);
+        setTrades([]);
+        setWatchlist(MOCK_WATCHLIST);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const addAccount = useCallback((account: Omit<Account, 'id' | 'createdAt' | 'status'>) => {
-    setAccounts(prev => [
-      ...prev,
-      {
-        ...account,
-        id: `acc_${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        status: 'active'
-      }
-    ]);
+    createAccount(account)
+      .then(newAccount => {
+        setAccounts(prev => [newAccount, ...prev]);
+      })
+      .catch(err => {
+        console.error('Error creating account:', err);
+        setError('Failed to create account');
+      });
   }, []);
   
   const addToWatchlist = useCallback((item: WatchlistItem) => {
@@ -40,39 +74,61 @@ const App: React.FC = () => {
   }, []);
 
   const addTrade = useCallback((tradeData: Omit<Trade, 'id' | 'status' | 'openAt' | 'pnl'>) => {
-    setTrades(prev => [
-      ...prev,
-      {
-        ...tradeData,
-        id: `t_${Date.now()}`,
-        status: TradeStatus.OPEN,
-        openAt: new Date().toISOString(),
-        pnl: 0, // Initial P&L for an open trade is 0
-      }
-    ]);
+    createTrade(tradeData)
+      .then(newTrade => {
+        setTrades(prev => [newTrade, ...prev]);
+      })
+      .catch(err => {
+        console.error('Error creating trade:', err);
+        setError('Failed to create trade');
+      });
   }, []);
 
   const closeTrade = useCallback((tradeId: string, closePrice: number) => {
-    setTrades(prev => prev.map(trade => {
-      if (trade.id === tradeId) {
-        let pnl: number;
-        if (trade.tradeType === TradeType.LONG) {
-          pnl = (closePrice - trade.openPrice) * trade.quantity;
-        } else { // SHORT
-          pnl = (trade.openPrice - closePrice) * trade.quantity;
-        }
-        return {
-          ...trade,
-          status: TradeStatus.CLOSED,
-          closePrice,
-          pnl,
-          closedAt: new Date().toISOString(),
-        };
-      }
-      return trade;
-    }));
+    closeTrade(tradeId, closePrice)
+      .then(() => {
+        // Refresh trades data
+        return fetchTrades();
+      })
+      .then(updatedTrades => {
+        setTrades(updatedTrades);
+      })
+      .catch(err => {
+        console.error('Error closing trade:', err);
+        setError('Failed to close trade');
+      });
   }, []);
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex h-screen bg-gray-900 items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-blue mx-auto"></div>
+          <p className="mt-4 text-gray-400">Loading your trading data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex h-screen bg-gray-900 items-center justify-center">
+        <div className="text-center">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4">
+            {error}
+          </div>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-brand-blue text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-500 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const renderPage = () => {
     switch (activePage) {
