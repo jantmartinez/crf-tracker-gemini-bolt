@@ -276,10 +276,47 @@ export const fetchWatchlist = async (): Promise<WatchlistItem[]> => {
 
 // User profile operations
 export const fetchUserProfile = async () => {
-  // Return default profile since authentication is disabled
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('Error fetching user profile:', error);
+    // Return default profile if none exists
+    return {
+      base_currency: 'USD',
+      risk_per_trade: 2.5,
+      default_leverage: 5
+    };
+  }
+
   return {
-    base_currency: 'USD',
-    risk_per_trade: 2.5,
-    default_leverage: 5
+    base_currency: data.base_currency,
+    risk_per_trade: data.risk_per_trade,
+    default_leverage: data.default_leverage
   };
+};
+
+export const createUserProfile = async (profileData: {
+  base_currency?: string;
+  risk_per_trade?: number;
+  default_leverage?: number;
+}) => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .insert({
+      base_currency: profileData.base_currency || 'USD',
+      risk_per_trade: profileData.risk_per_trade || 2.5,
+      default_leverage: profileData.default_leverage || 5
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating user profile:', error);
+    throw error;
+  }
+
+  return data;
 };
