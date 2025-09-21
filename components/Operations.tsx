@@ -20,12 +20,26 @@ export const OpenOperationModal: React.FC<OpenOperationModalProps> = ({ isOpen, 
   const [quantity, setQuantity] = useState('');
   const [openPrice, setOpenPrice] = useState(initialData?.price.toString() || '');
   const [accountId, setAccountId] = useState(accounts.length > 0 ? accounts[0].id : '');
+  const [leverage, setLeverage] = useState('5');
+  const [estimatedDays, setEstimatedDays] = useState('7');
+  const [openCommission, setOpenCommission] = useState('0.1');
+  const [closeCommission, setCloseCommission] = useState('0.1');
+  const [nightCommission, setNightCommission] = useState('0.05');
 
   if (!isOpen) return null;
 
+  // Calculate position value and required margin
+  const positionValue = parseFloat(quantity || '0') * parseFloat(openPrice || '0');
+  const requiredMargin = positionValue / parseFloat(leverage || '1');
+  const openCommissionAmount = (positionValue * parseFloat(openCommission || '0')) / 100;
+  const closeCommissionAmount = (positionValue * parseFloat(closeCommission || '0')) / 100;
+  const totalCommissions = openCommissionAmount + closeCommissionAmount;
+  const nightCommissionPerDay = (positionValue * parseFloat(nightCommission || '0')) / 100;
+  const estimatedNightCommissions = nightCommissionPerDay * parseFloat(estimatedDays || '0');
+  const totalEstimatedCosts = totalCommissions + estimatedNightCommissions;
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (symbol && quantity && openPrice && accountId) {
+    if (symbol && quantity && openPrice && accountId && leverage) {
       onAdd({
         symbol: symbol.toUpperCase(),
         tradeType,
@@ -34,44 +48,134 @@ export const OpenOperationModal: React.FC<OpenOperationModalProps> = ({ isOpen, 
         accountId,
       });
       onClose();
+      // Reset form
+      setSymbol('');
+      setQuantity('');
+      setOpenPrice('');
+      setLeverage('5');
+      setEstimatedDays('7');
+      setOpenCommission('0.1');
+      setCloseCommission('0.1');
+      setNightCommission('0.05');
     }
   };
 
   return (
     <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-2xl font-bold mb-6 text-gray-200">Open New Operation</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="symbol" className="block text-sm font-medium text-gray-400 mb-1">Symbol</label>
-            <input id="symbol" type="text" value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" required />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Trade Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="symbol" className="block text-sm font-medium text-gray-400 mb-1">Symbol</label>
+              <input id="symbol" type="text" value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="e.g., AAPL" required />
+            </div>
+            <div>
+              <label htmlFor="tradeType" className="block text-sm font-medium text-gray-400 mb-1">Position Type</label>
+              <select id="tradeType" value={tradeType} onChange={(e) => setTradeType(e.target.value as TradeType)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue">
+                <option value={TradeType.LONG}>Long (Buy)</option>
+                <option value={TradeType.SHORT}>Short (Sell)</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label htmlFor="tradeType" className="block text-sm font-medium text-gray-400 mb-1">Type</label>
-            <select id="tradeType" value={tradeType} onChange={(e) => setTradeType(e.target.value as TradeType)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue">
-              <option value={TradeType.LONG}>Long</option>
-              <option value={TradeType.SHORT}>Short</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+
+          {/* Position Details */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label htmlFor="quantity" className="block text-sm font-medium text-gray-400 mb-1">Quantity</label>
-              <input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" required />
+              <input id="quantity" type="number" step="0.01" min="0.01" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="100" required />
             </div>
             <div>
-              <label htmlFor="openPrice" className="block text-sm font-medium text-gray-400 mb-1">Open Price</label>
-              <input id="openPrice" type="number" value={openPrice} onChange={(e) => setOpenPrice(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" required />
+              <label htmlFor="openPrice" className="block text-sm font-medium text-gray-400 mb-1">Open Price ($)</label>
+              <input id="openPrice" type="number" step="0.01" min="0.01" value={openPrice} onChange={(e) => setOpenPrice(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="150.00" required />
+            </div>
+            <div>
+              <label htmlFor="leverage" className="block text-sm font-medium text-gray-400 mb-1">Leverage (1:X)</label>
+              <input id="leverage" type="number" min="1" max="500" value={leverage} onChange={(e) => setLeverage(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="5" required />
             </div>
           </div>
+
+          {/* Commission Settings */}
+          <div className="border-t border-gray-700 pt-4">
+            <h3 className="text-lg font-semibold text-gray-200 mb-3">Commission Settings</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label htmlFor="openCommission" className="block text-sm font-medium text-gray-400 mb-1">Open Commission (%)</label>
+                <input id="openCommission" type="number" step="0.01" min="0" max="10" value={openCommission} onChange={(e) => setOpenCommission(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="0.1" />
+              </div>
+              <div>
+                <label htmlFor="closeCommission" className="block text-sm font-medium text-gray-400 mb-1">Close Commission (%)</label>
+                <input id="closeCommission" type="number" step="0.01" min="0" max="10" value={closeCommission} onChange={(e) => setCloseCommission(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="0.1" />
+              </div>
+              <div>
+                <label htmlFor="nightCommission" className="block text-sm font-medium text-gray-400 mb-1">Night Commission (% per day)</label>
+                <input id="nightCommission" type="number" step="0.01" min="0" max="1" value={nightCommission} onChange={(e) => setNightCommission(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="0.05" />
+              </div>
+              <div>
+                <label htmlFor="estimatedDays" className="block text-sm font-medium text-gray-400 mb-1">Estimated Hold (days)</label>
+                <input id="estimatedDays" type="number" min="1" max="365" value={estimatedDays} onChange={(e) => setEstimatedDays(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="7" />
+              </div>
+            </div>
+          </div>
+
+          {/* Account Selection */}
           <div>
-            <label htmlFor="accountId" className="block text-sm font-medium text-gray-400 mb-1">Account</label>
+            <label htmlFor="accountId" className="block text-sm font-medium text-gray-400 mb-1">Trading Account</label>
             <select id="accountId" value={accountId} onChange={(e) => setAccountId(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" required>
-               {accounts.length > 0 ? accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>) : <option disabled>No accounts available</option>}
+              {accounts.length > 0 ? accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>) : <option disabled>No accounts available</option>}
             </select>
           </div>
-          <div className="flex justify-end space-x-4 pt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-700">Cancel</button>
-            <button type="submit" className="px-6 py-2 rounded-lg bg-brand-blue text-white font-bold hover:bg-blue-500">Open Trade</button>
+
+          {/* Position Summary */}
+          {quantity && openPrice && leverage && (
+            <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+              <h3 className="text-lg font-semibold text-gray-200 mb-3">Position Summary</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-400">Position Value</p>
+                  <p className="font-bold text-gray-200">${positionValue.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Required Margin</p>
+                  <p className="font-bold text-brand-blue">${requiredMargin.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Open Commission</p>
+                  <p className="font-bold text-brand-red">${openCommissionAmount.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Close Commission</p>
+                  <p className="font-bold text-brand-red">${closeCommissionAmount.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Night Commission/Day</p>
+                  <p className="font-bold text-brand-red">${nightCommissionPerDay.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Est. Night Commissions</p>
+                  <p className="font-bold text-brand-red">${estimatedNightCommissions.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Total Est. Costs</p>
+                  <p className="font-bold text-brand-red">${totalEstimatedCosts.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Breakeven Price</p>
+                  <p className="font-bold text-yellow-400">
+                    ${tradeType === TradeType.LONG 
+                      ? (parseFloat(openPrice || '0') + (totalEstimatedCosts / parseFloat(quantity || '1'))).toFixed(2)
+                      : (parseFloat(openPrice || '0') - (totalEstimatedCosts / parseFloat(quantity || '1'))).toFixed(2)
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-4 pt-4 border-t border-gray-700">
+            <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors">Cancel</button>
+            <button type="submit" className="px-8 py-2 rounded-lg bg-brand-blue text-white font-bold hover:bg-blue-500 transition-colors">Open Position</button>
           </div>
         </form>
       </div>
