@@ -101,18 +101,36 @@ const AccountCard: React.FC<{ account: Account; onRemove: (accountId: string) =>
   );
 };
 
-const AddAccountModal: React.FC<{ isOpen: boolean; onClose: () => void; onAdd: (account: { name: string; startingBalance: number }) => void }> = ({ isOpen, onClose, onAdd }) => {
+const AddAccountModal: React.FC<{ 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onAdd: (account: { 
+    name: string; 
+    startingBalance: number; 
+    openCloseCommission?: number; 
+    nightCommission?: number; 
+  }) => void 
+}> = ({ isOpen, onClose, onAdd }) => {
   const [name, setName] = useState('');
   const [balance, setBalance] = useState('');
+  const [openCloseCommission, setOpenCloseCommission] = useState('0.25');
+  const [nightCommission, setNightCommission] = useState('7.0');
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name && balance) {
-      onAdd({ name, startingBalance: parseFloat(balance) });
+      onAdd({ 
+        name, 
+        startingBalance: parseFloat(balance),
+        openCloseCommission: parseFloat(openCloseCommission),
+        nightCommission: parseFloat(nightCommission)
+      });
       setName('');
       setBalance('');
+      setOpenCloseCommission('0.25');
+      setNightCommission('7.0');
       onClose();
     }
   };
@@ -250,14 +268,7 @@ const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount, removeAccount
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {accounts.map(acc => (
-          <AccountCard 
-            key={acc.id} 
-            account={acc} 
-            onRemove={removeAccount} 
-            onUpdate={updateAccount}
-          />
-        ))}
+        {accounts.map(acc => <AccountCard key={acc.id} account={acc} onRemove={removeAccount} />)}
       </div>
 
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
