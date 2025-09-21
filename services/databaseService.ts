@@ -20,7 +20,7 @@ export const fetchAccounts = async (): Promise<Account[]> => {
     name: account.name,
     startingBalance: account.starting_balance,
     createdAt: account.created_at,
-    status: account.is_active ? 'active' : 'inactive'
+    status: (account.is_active ? 'active' : 'inactive') as 'active' | 'inactive'
   }));
 };
 
