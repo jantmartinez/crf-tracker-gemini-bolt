@@ -2,11 +2,12 @@
 import React, { useState } from 'react';
 import { useEffect } from 'react';
 import type { Account } from '../types';
-import { fetchUserProfile, updateUserProfile } from '../services/databaseService';
+import { fetchUserProfile, updateUserProfile, deleteAccount } from '../services/databaseService';
 
 interface AccountsProps {
   accounts: Account[];
   addAccount: (account: Omit<Account, 'id' | 'createdAt' | 'status'>) => void;
+  removeAccount: (accountId: string) => void;
 }
 
 interface UserProfile {
@@ -14,23 +15,86 @@ interface UserProfile {
   risk_per_trade: number;
   default_leverage: number;
 }
-const AccountCard: React.FC<{ account: Account }> = ({ account }) => (
+
+const DeleteAccountModal: React.FC<{ 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onConfirm: () => void; 
+  accountName: string;
+}> = ({ isOpen, onClose, onConfirm, accountName }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-2xl font-bold mb-4 text-gray-200">Delete Account</h2>
+        <p className="text-gray-400 mb-6">
+          Are you sure you want to delete the account "{accountName}"? This action cannot be undone.
+        </p>
+        <div className="flex justify-end space-x-4">
+          <button 
+            type="button" 
+            onClick={onClose} 
+            className="px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button 
+            type="button" 
+            onClick={onConfirm} 
+            className="px-6 py-2 rounded-lg bg-brand-red text-white font-bold hover:bg-red-500"
+          >
+            Delete Account
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AccountCard: React.FC<{ account: Account; onRemove: (accountId: string) => void }> = ({ account, onRemove }) => {
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const handleDelete = () => {
+    onRemove(account.id);
+    setShowDeleteModal(false);
+  };
+
+  return (
+    <>
   <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 transition-all hover:border-brand-blue hover:shadow-2xl">
     <div className="flex justify-between items-start">
       <div>
         <h3 className="text-xl font-bold text-gray-200">{account.name}</h3>
         <p className="text-sm text-gray-400">Created: {new Date(account.createdAt).toLocaleDateString()}</p>
       </div>
-      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${account.status === 'active' ? 'bg-green-500/20 text-brand-green' : 'bg-gray-600 text-gray-300'}`}>
-        {account.status}
-      </span>
+      <div className="flex items-center space-x-2">
+        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${account.status === 'active' ? 'bg-green-500/20 text-brand-green' : 'bg-gray-600 text-gray-300'}`}>
+          {account.status}
+        </span>
+        <button
+          onClick={() => setShowDeleteModal(true)}
+          className="text-gray-400 hover:text-brand-red transition-colors p-1"
+          title="Delete account"
+        >
+          <i className="ri-delete-bin-line text-lg"></i>
+        </button>
+      </div>
     </div>
     <div className="mt-6">
       <p className="text-gray-400">Starting Balance</p>
       <p className="text-3xl font-mono font-bold text-brand-blue">${account.startingBalance.toLocaleString()}</p>
     </div>
   </div>
-);
+      <DeleteAccountModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        accountName={account.name}
+      />
+    </>
+  );
+};
 
 const AddAccountModal: React.FC<{ isOpen: boolean; onClose: () => void; onAdd: (account: { name: string; startingBalance: number }) => void }> = ({ isOpen, onClose, onAdd }) => {
   const [name, setName] = useState('');
@@ -88,7 +152,7 @@ const AddAccountModal: React.FC<{ isOpen: boolean; onClose: () => void; onAdd: (
 };
 
 
-const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount }) => {
+const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount, removeAccount }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [settings, setSettings] = useState<UserProfile>({
     base_currency: 'USD',
@@ -181,7 +245,7 @@ const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {accounts.map(acc => <AccountCard key={acc.id} account={acc} />)}
+        {accounts.map(acc => <AccountCard key={acc.id} account={acc} onRemove={removeAccount} />)}
       </div>
 
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg">

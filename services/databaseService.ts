@@ -50,6 +50,18 @@ export const createAccount = async (account: Omit<Account, 'id' | 'createdAt' | 
   };
 };
 
+export const deleteAccount = async (accountId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('accounts')
+    .delete()
+    .eq('id', accountId);
+
+  if (error) {
+    console.error('Error deleting account:', error);
+    throw error;
+  }
+};
+
 // Symbol operations
 export const fetchOrCreateSymbol = async (ticker: string): Promise<string> => {
   // First try to find existing symbol

@@ -9,7 +9,7 @@ import Operations from './components/Operations';
 import type { Page, Account, Trade, WatchlistItem } from './types';
 import { MOCK_WATCHLIST } from './constants';
 import { TradeStatus, TradeType } from './types';
-import { fetchAccounts, createAccount, fetchTrades, createTrade, closeTradeInDb, fetchWatchlist, debugFetchProfiles } from './services/databaseService';
+import { fetchAccounts, createAccount, deleteAccount, fetchTrades, createTrade, closeTradeInDb, fetchWatchlist, debugFetchProfiles } from './services/databaseService';
 
 
 const App: React.FC = () => {
@@ -62,6 +62,17 @@ const App: React.FC = () => {
       .catch(err => {
         console.error('Error creating account:', err);
         setError('Failed to create account');
+      });
+  }, []);
+  
+  const removeAccount = useCallback((accountId: string) => {
+    deleteAccount(accountId)
+      .then(() => {
+        setAccounts(prev => prev.filter(acc => acc.id !== accountId));
+      })
+      .catch(err => {
+        console.error('Error deleting account:', err);
+        setError('Failed to delete account');
       });
   }, []);
   
@@ -142,7 +153,7 @@ const App: React.FC = () => {
       case 'operations':
         return <Operations trades={trades} accounts={accounts} addTrade={addTrade} closeTrade={closeTrade} />;
       case 'accounts':
-        return <Accounts accounts={accounts} addAccount={addAccount} />;
+        return <Accounts accounts={accounts} addAccount={addAccount} removeAccount={removeAccount} />;
       default:
         return <Dashboard accounts={accounts} trades={trades} watchlist={watchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} closeTrade={closeTrade} />;
     }
