@@ -85,7 +85,7 @@ const App: React.FC = () => {
   }, []);
 
   const closeTrade = useCallback((tradeId: string, closePrice: number) => {
-    closeTrade(tradeId, closePrice)
+    closeTradeInDb(tradeId, closePrice)
       .then(() => {
         // Refresh trades data
         return fetchTrades();
