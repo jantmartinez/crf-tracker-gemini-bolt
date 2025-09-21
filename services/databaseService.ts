@@ -193,6 +193,7 @@ export const createTrade = async (tradeData: Omit<Trade, 'id' | 'status' | 'open
 };
 
 export const closeTrade = async (tradeId: string, closePrice: number): Promise<void> => {
+}
 
 export const closeTradeInDb = async (tradeId: string, closePrice: number): Promise<void> => {
   // Get the operation group and its fills
