@@ -318,8 +318,23 @@ export const fetchUserProfile = async () => {
     .single();
 
   if (error) {
+    // Check if error is due to no profile existing (expected for new users)
+    if (error.code === 'PGRST116') {
+      // No profile exists - this is normal for new users, return defaults
+      return {
+        base_currency: 'USD',
+        risk_per_trade: 2.5,
+        default_leverage: 5
+      };
+    }
+    
+    // For other errors, log and throw
     console.error('Error fetching user profile:', error);
-    // Return default profile if none exists
+    throw error;
+  }
+
+  if (!data) {
+    // No data returned, return defaults
     return {
       base_currency: 'USD',
       risk_per_trade: 2.5,
