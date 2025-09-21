@@ -62,7 +62,7 @@ export const fetchOrCreateSymbol = async (ticker: string): Promise<string> => {
     .from('symbols')
     .select('id')
     .eq('ticker', ticker.toUpperCase())
-    .single();
+    .maybeSingle();
 
   if (existingSymbol) {
     return existingSymbol.id;
@@ -76,15 +76,14 @@ export const fetchOrCreateSymbol = async (ticker: string): Promise<string> => {
       name: `${ticker.toUpperCase()} Corporation`, // Placeholder name
       currency: 'USD'
     })
-    .select('id')
-    .single();
+    .select('id');
 
   if (error) {
     console.error('Error creating symbol:', error);
     throw error;
   }
 
-  return data.id;
+  return data[0].id;
 };
 
 // Trade operations (using operation_groups and operation_fills)
