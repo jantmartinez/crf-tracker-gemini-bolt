@@ -274,6 +274,42 @@ export const fetchWatchlist = async (): Promise<WatchlistItem[]> => {
   }));
 };
 
+// Debug function to fetch and print profiles table
+export const debugFetchProfiles = async () => {
+  console.log('🔍 Fetching profiles table data...');
+  
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ Error fetching profiles:', error);
+    return;
+  }
+
+  console.log('📊 Profiles table data:');
+  console.table(data);
+  
+  if (data.length === 0) {
+    console.log('⚠️ No profiles found in the table');
+  } else {
+    console.log(`✅ Found ${data.length} profile(s)`);
+    data.forEach((profile, index) => {
+      console.log(`Profile ${index + 1}:`, {
+        id: profile.id,
+        base_currency: profile.base_currency,
+        risk_per_trade: profile.risk_per_trade,
+        default_leverage: profile.default_leverage,
+        created_at: profile.created_at,
+        updated_at: profile.updated_at
+      });
+    });
+  }
+  
+  return data;
+};
+
 // User profile operations
 export const fetchUserProfile = async () => {
   const { data, error } = await supabase
