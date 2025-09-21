@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import type { Trade, Account, WatchlistItem } from '../types';
 import { TradeStatus } from '../types';
 import { TrashIcon, AddIcon } from './Icons';
-import { OpenOperationModal } from './Operations';
+import { OpenOperationModal, CloseOperationModal } from './Operations';
 
 interface DashboardProps {
   accounts: Account[];
@@ -11,6 +11,7 @@ interface DashboardProps {
   watchlist: WatchlistItem[];
   removeFromWatchlist: (symbol: string) => void;
   addTrade: (tradeData: Omit<Trade, 'id' | 'status' | 'openAt' | 'pnl'>) => void;
+  closeTrade: (tradeId: string, closePrice: number) => void;
 }
 
 const KpiCard: React.FC<{ title: string; value: string | number; change?: string; colorClass?: string }> = ({ title, value, change, colorClass = 'text-gray-200' }) => (
@@ -57,9 +58,10 @@ const TableCard: React.FC<{ title: string, children: React.ReactNode, headers: s
 );
 
 
-const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, removeFromWatchlist, addTrade }) => {
+const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, removeFromWatchlist, addTrade, closeTrade }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalInitialData, setModalInitialData] = useState<{ symbol: string; price: number } | undefined>(undefined);
+  const [tradeToClose, setTradeToClose] = useState<Trade | null>(null);
 
   const closedTrades = trades.filter(t => t.status === TradeStatus.CLOSED);
   const openTrades = trades.filter(t => t.status === TradeStatus.OPEN);
@@ -78,6 +80,10 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
   const handleAddOperation = (symbol: string, price: number) => {
     setModalInitialData({ symbol, price });
     setIsModalOpen(true);
+  };
+
+  const handleClosePosition = (trade: Trade) => {
+    setTradeToClose(trade);
   };
 
   return (
@@ -104,8 +110,8 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
                     <td className="p-4">{trade.quantity}</td>
                     <td className={`p-4 font-mono text-right ${trade.pnl! >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>{trade.pnl?.toFixed(2)} USD</td>
                     <td className="p-4 text-center">
-                        <button onClick={() => handleAddOperation(trade.symbol, trade.openPrice)} className="text-gray-400 hover:text-brand-blue" title="Add to position">
-                          <AddIcon />
+                        <button onClick={() => handleClosePosition(trade)} className="text-gray-400 hover:text-brand-red" title="Close position">
+                          <i className="ri-close-line"></i>
                         </button>
                     </td>
                   </tr>
@@ -153,6 +159,15 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
             onAdd={addTrade}
             accounts={accounts}
             initialData={modalInitialData}
+          />
+        )}
+
+        {tradeToClose && (
+          <CloseOperationModal
+            trade={tradeToClose}
+            isOpen={!!tradeToClose}
+            onClose={() => setTradeToClose(null)}
+            onConfirm={closeTrade}
           />
         )}
     </div>

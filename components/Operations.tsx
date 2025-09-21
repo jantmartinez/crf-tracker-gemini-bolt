@@ -79,14 +79,14 @@ export const OpenOperationModal: React.FC<OpenOperationModalProps> = ({ isOpen, 
   );
 };
 
-interface CloseOperationModalProps {
+export interface CloseOperationModalProps {
     trade: Trade;
     isOpen: boolean;
     onClose: () => void;
     onConfirm: (tradeId: string, closePrice: number) => void;
 }
 
-const CloseOperationModal: React.FC<CloseOperationModalProps> = ({ trade, isOpen, onClose, onConfirm }) => {
+export const CloseOperationModal: React.FC<CloseOperationModalProps> = ({ trade, isOpen, onClose, onConfirm }) => {
     const [closePrice, setClosePrice] = useState('');
 
     if (!isOpen) return null;

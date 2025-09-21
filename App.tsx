@@ -77,7 +77,7 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (activePage) {
       case 'dashboard':
-        return <Dashboard accounts={accounts} trades={trades} watchlist={watchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} />;
+        return <Dashboard accounts={accounts} trades={trades} watchlist={watchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} closeTrade={closeTrade} />;
       case 'intelligence':
         return <Intelligence watchlist={watchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} accounts={accounts} />;
       case 'operations':
@@ -85,7 +85,7 @@ const App: React.FC = () => {
       case 'accounts':
         return <Accounts accounts={accounts} addAccount={addAccount} />;
       default:
-        return <Dashboard accounts={accounts} trades={trades} watchlist={watchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} />;
+        return <Dashboard accounts={accounts} trades={trades} watchlist={watchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} closeTrade={closeTrade} />;
     }
   };
 
