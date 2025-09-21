@@ -25,12 +25,17 @@ export const fetchAccounts = async (): Promise<Account[]> => {
 };
 
 export const createAccount = async (account: Omit<Account, 'id' | 'createdAt' | 'status'>): Promise<Account> => {
+  // Ensure user profile exists and get the profile ID
+  const profile = await updateUserProfile({});
+  const profileId = profile.id;
+
   const { data, error } = await supabase
     .from('accounts')
     .insert({
       name: account.name,
       starting_balance: account.startingBalance,
       current_balance: account.startingBalance,
+      user_id: profileId,
       is_active: true
     })
     .select()
