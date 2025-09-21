@@ -15,6 +15,8 @@ export const fetchAccounts = async (): Promise<Account[]> => {
     throw error;
   }
 
+  console.log('Fetched accounts from database:', data);
+
   return data.map(account => ({
     id: account.id,
     name: account.name,
@@ -67,6 +69,24 @@ export const deleteAccount = async (accountId: string): Promise<void> => {
     throw new Error('Cannot delete account with existing operations. Please close or delete all operations first.');
   }
 
+  // Check if the account exists first
+  const { data: existingAccount, error: fetchError } = await supabase
+    .from('accounts')
+    .select('id, name')
+    .eq('id', accountId)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error('Error fetching account:', fetchError);
+    throw new Error('Failed to verify account exists');
+  }
+
+  if (!existingAccount) {
+    throw new Error('Account not found in database');
+  }
+
+  console.log('Attempting to delete account:', existingAccount);
+
   // Delete the account
   const { error } = await supabase
     .from('accounts')
@@ -75,8 +95,10 @@ export const deleteAccount = async (accountId: string): Promise<void> => {
 
   if (error) {
     console.error('Error deleting account:', error);
-    throw new Error('Failed to delete account from database');
+    throw new Error(`Failed to delete account from database: ${error.message}`);
   }
+
+  console.log('Account deleted successfully:', accountId);
 };
 
 // Symbol operations
