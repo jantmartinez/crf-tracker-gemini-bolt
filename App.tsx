@@ -126,6 +126,13 @@ const App: React.FC = () => {
         setError('Failed to delete trade');
       });
   }, []);
+
+  const updateAccount = useCallback((accountId: string, updates: Partial<Account>) => {
+    setAccounts(prev => prev.map(account => 
+      account.id === accountId ? { ...account, ...updates } : account
+    ));
+  }, []);
+
   // Show loading state
   if (isLoading) {
     return (
