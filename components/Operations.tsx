@@ -42,11 +42,13 @@ export const OpenOperationModal: React.FC<OpenOperationModalProps> = ({ isOpen, 
 
   // Calculate position value and required margin
   const positionValue = parseFloat(quantity || '0') * parseFloat(openPrice || '0');
-  const requiredMargin = positionValue / parseFloat(leverage || '1');
+  const leverageValue = parseFloat(leverage || '1');
+  const requiredMargin = positionValue / leverageValue;
   const openCommissionAmount = (positionValue * parseFloat(openCommission || '0')) / 100;
   const closeCommissionAmount = (positionValue * parseFloat(closeCommission || '0')) / 100;
   const totalCommissions = openCommissionAmount + closeCommissionAmount;
-  const nightCommissionPerDay = (positionValue * parseFloat(nightCommission || '0')) / 100;
+  // Night commission: annual rate divided by 365 days, applied to position value
+  const nightCommissionPerDay = (positionValue * parseFloat(nightCommission || '0')) / 100 / 365;
   const estimatedNightCommissions = nightCommissionPerDay * parseFloat(estimatedDays || '0');
   const totalEstimatedCosts = totalCommissions + estimatedNightCommissions;
   const handleSubmit = (e: React.FormEvent) => {
@@ -111,7 +113,7 @@ export const OpenOperationModal: React.FC<OpenOperationModalProps> = ({ isOpen, 
           {/* Commission Settings */}
           <div className="border-t border-gray-700 pt-4">
             <h3 className="text-lg font-semibold text-gray-200 mb-3">Commission Settings</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
                 <label htmlFor="openCommission" className="block text-sm font-medium text-gray-400 mb-1">Open Commission (%)</label>
                 <input id="openCommission" type="number" step="0.01" min="0" max="10" value={openCommission} onChange={(e) => setOpenCommission(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="0.1" />
@@ -121,12 +123,16 @@ export const OpenOperationModal: React.FC<OpenOperationModalProps> = ({ isOpen, 
                 <input id="closeCommission" type="number" step="0.01" min="0" max="10" value={closeCommission} onChange={(e) => setCloseCommission(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="0.1" />
               </div>
               <div>
-                <label htmlFor="nightCommission" className="block text-sm font-medium text-gray-400 mb-1">Night Commission (% per day)</label>
-                <input id="nightCommission" type="number" step="0.01" min="0" max="1" value={nightCommission} onChange={(e) => setNightCommission(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="0.05" />
+                <label htmlFor="nightCommission" className="block text-sm font-medium text-gray-400 mb-1">Night Commission (% per year)</label>
+                <input id="nightCommission" type="number" step="0.01" min="0" max="100" value={nightCommission} onChange={(e) => setNightCommission(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="7.0" />
               </div>
               <div>
                 <label htmlFor="estimatedDays" className="block text-sm font-medium text-gray-400 mb-1">Estimated Hold (days)</label>
                 <input id="estimatedDays" type="number" min="1" max="365" value={estimatedDays} onChange={(e) => setEstimatedDays(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="7" />
+              </div>
+              <div>
+                <label htmlFor="leverageInput" className="block text-sm font-medium text-gray-400 mb-1">Leverage (1:X)</label>
+                <input id="leverageInput" type="number" min="1" max="500" value={leverage} onChange={(e) => setLeverage(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="5" />
               </div>
             </div>
           </div>
@@ -150,7 +156,7 @@ export const OpenOperationModal: React.FC<OpenOperationModalProps> = ({ isOpen, 
                 </div>
                 <div>
                   <p className="text-gray-400">Required Margin</p>
-                  <p className="font-bold text-brand-blue">${requiredMargin.toFixed(2)}</p>
+                  <p className="font-bold text-brand-blue">${requiredMargin.toFixed(2)} (1:{leverageValue})</p>
                 </div>
                 <div>
                   <p className="text-gray-400">Open Commission</p>
