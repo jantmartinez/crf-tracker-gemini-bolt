@@ -22,9 +22,21 @@ export const OpenOperationModal: React.FC<OpenOperationModalProps> = ({ isOpen, 
   const [accountId, setAccountId] = useState(accounts.length > 0 ? accounts[0].id : '');
   const [leverage, setLeverage] = useState('5');
   const [estimatedDays, setEstimatedDays] = useState('7');
-  const [openCommission, setOpenCommission] = useState('0.1');
-  const [closeCommission, setCloseCommission] = useState('0.1');
-  const [nightCommission, setNightCommission] = useState('0.05');
+  
+  // Get selected account's commission settings
+  const selectedAccount = accounts.find(acc => acc.id === accountId);
+  const [openCommission, setOpenCommission] = useState(selectedAccount?.openCloseCommission.toString() || '0.25');
+  const [closeCommission, setCloseCommission] = useState(selectedAccount?.openCloseCommission.toString() || '0.25');
+  const [nightCommission, setNightCommission] = useState(selectedAccount?.nightCommission.toString() || '7.0');
+
+  // Update commission values when account changes
+  React.useEffect(() => {
+    if (selectedAccount) {
+      setOpenCommission(selectedAccount.openCloseCommission.toString());
+      setCloseCommission(selectedAccount.openCloseCommission.toString());
+      setNightCommission(selectedAccount.nightCommission.toString());
+    }
+  }, [selectedAccount]);
 
   if (!isOpen) return null;
 
