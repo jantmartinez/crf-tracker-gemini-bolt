@@ -107,6 +107,8 @@ export interface Database {
           is_active?: boolean | null;
           created_at?: string | null;
           updated_at?: string | null;
+          open_close_commission?: number | null;
+          night_commission?: number | null;
         };
         Update: {
           id?: string;
@@ -119,6 +121,8 @@ export interface Database {
           is_active?: boolean | null;
           created_at?: string | null;
           updated_at?: string | null;
+          open_close_commission?: number | null;
+          night_commission?: number | null;
         };
       };
       operation_groups: {
