@@ -153,8 +153,7 @@ const Intelligence: React.FC<IntelligenceProps> = ({ watchlist, addToWatchlist, 
 
     return (
         <>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
+        <div className="space-y-8">
                 <h1 className="text-3xl font-bold text-gray-200">Intelligence Center</h1>
                 <div className="flex space-x-2">
                     <input
@@ -261,10 +260,8 @@ const Intelligence: React.FC<IntelligenceProps> = ({ watchlist, addToWatchlist, 
                         </div>
                     </div>
                 )}
-            </div>
-            <div className="lg:col-span-1 space-y-8">
-                <WatchlistCard watchlist={watchlist} removeFromWatchlist={removeFromWatchlist} onAddOperation={openTradeModal} />
-            </div>
+            
+            <WatchlistCard watchlist={watchlist} removeFromWatchlist={removeFromWatchlist} onAddOperation={openTradeModal} />
         </div>
         {isModalOpen && (
           <OpenOperationModal
