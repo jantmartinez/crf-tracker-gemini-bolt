@@ -10,6 +10,7 @@ import type { Page, Account, Trade, WatchlistItem } from './types';
 import { MOCK_WATCHLIST } from './constants';
 import { TradeStatus, TradeType } from './types';
 import { fetchAccounts, createAccount, deleteAccount, fetchTrades, createTrade, closeTradeInDb, fetchWatchlist, debugFetchProfiles } from './services/databaseService';
+import { deleteOperation } from './services/databaseService';
 
 
 const App: React.FC = () => {
@@ -113,6 +114,17 @@ const App: React.FC = () => {
       });
   }, []);
 
+  const deleteTrade = useCallback((tradeId: string) => {
+    deleteOperation(tradeId)
+      .then(() => {
+        // Remove the trade from local state
+        setTrades(prev => prev.filter(trade => trade.id !== tradeId));
+      })
+      .catch(err => {
+        console.error('Error deleting trade:', err);
+        setError('Failed to delete trade');
+      });
+  }, []);
   // Show loading state
   if (isLoading) {
     return (
@@ -151,7 +163,7 @@ const App: React.FC = () => {
       case 'intelligence':
         return <Intelligence watchlist={watchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} accounts={accounts} />;
       case 'operations':
-        return <Operations trades={trades} accounts={accounts} addTrade={addTrade} closeTrade={closeTrade} />;
+        return <Operations trades={trades} accounts={accounts} addTrade={addTrade} closeTrade={closeTrade} deleteTrade={deleteTrade} />;
       case 'accounts':
         return <Accounts accounts={accounts} addAccount={addAccount} removeAccount={removeAccount} />;
       default:

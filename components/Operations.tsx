@@ -129,18 +129,53 @@ interface OperationsProps {
   accounts: Account[];
   addTrade: (tradeData: Omit<Trade, 'id' | 'status' | 'openAt' | 'pnl'>) => void;
   closeTrade: (tradeId: string, closePrice: number) => void;
+  deleteTrade: (tradeId: string) => void;
 }
 
-const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, closeTrade }) => {
+const DeleteOperationModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  trade: Trade;
+}> = ({ isOpen, onClose, onConfirm, trade }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <h2 className="text-2xl font-bold mb-2 text-gray-200">Delete Operation</h2>
+        <p className="text-gray-400 mb-6">
+          Are you sure you want to delete the {trade.tradeType.toUpperCase()} operation for {trade.symbol}? This action cannot be undone and will permanently remove all associated data.
+        </p>
+        <div className="flex justify-end space-x-4 pt-4">
+          <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-700">Cancel</button>
+          <button type="button" onClick={onConfirm} className="px-6 py-2 rounded-lg bg-brand-red text-white font-bold hover:bg-red-500">Delete Operation</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, closeTrade, deleteTrade }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [tradeToClose, setTradeToClose] = useState<Trade | null>(null);
+  const [tradeToDelete, setTradeToDelete] = useState<Trade | null>(null);
 
   const openTrades = trades.filter(t => t.status === TradeStatus.OPEN);
   const closedTrades = [...trades.filter(t => t.status === TradeStatus.CLOSED)].sort((a, b) => new Date(b.closedAt!).getTime() - new Date(a.closedAt!).getTime());
 
   const getAccountName = (id: string) => accounts.find(acc => acc.id === id)?.name || 'Unknown';
 
-  const TradeTable: React.FC<{title: string, trades: Trade[]}> = ({ title, trades }) => (
+  const handleDeleteOperation = (trade: Trade) => {
+    setTradeToDelete(trade);
+  };
+
+  const confirmDeleteOperation = () => {
+    if (tradeToDelete) {
+      deleteTrade(tradeToDelete.id);
+      setTradeToDelete(null);
+    }
+  };
+  const TradeTable: React.FC<{title: string, trades: Trade[], showDeleteButton?: boolean}> = ({ title, trades, showDeleteButton = false }) => (
     <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
       <h3 className="text-lg font-semibold mb-4 text-gray-200">{title}</h3>
       <div className="overflow-x-auto">
@@ -168,11 +203,22 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                   {trade.status === TradeStatus.OPEN ? new Date(trade.openAt).toLocaleDateString() : `${trade.pnl?.toFixed(2)} USD`}
                 </td>
                 <td className="p-4 text-center">
+                  <div className="flex justify-center items-center space-x-2">
                   {trade.status === TradeStatus.OPEN && (
                     <button onClick={() => setTradeToClose(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-red-500/20 text-brand-red hover:bg-red-500/40">
                       Close
                     </button>
                   )}
+                    {showDeleteButton && (
+                      <button 
+                        onClick={() => handleDeleteOperation(trade)} 
+                        className="text-gray-400 hover:text-brand-red transition-colors p-1" 
+                        title="Delete operation"
+                      >
+                        <i className="ri-delete-bin-line text-base"></i>
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             )) : (
@@ -194,7 +240,7 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
           </button>
         </div>
         <TradeTable title="Open Positions" trades={openTrades} />
-        <TradeTable title="Trade History" trades={closedTrades} />
+        <TradeTable title="Trade History" trades={closedTrades} showDeleteButton={true} />
       </div>
 
       <OpenOperationModal
@@ -209,6 +255,14 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
           isOpen={!!tradeToClose}
           onClose={() => setTradeToClose(null)}
           onConfirm={closeTrade}
+        />
+      )}
+      {tradeToDelete && (
+        <DeleteOperationModal
+          isOpen={!!tradeToDelete}
+          onClose={() => setTradeToDelete(null)}
+          onConfirm={confirmDeleteOperation}
+          trade={tradeToDelete}
         />
       )}
     </>

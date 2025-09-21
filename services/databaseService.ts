@@ -263,6 +263,29 @@ export const closeTradeInDb = async (tradeId: string, closePrice: number): Promi
   }
 };
 
+export const deleteOperation = async (operationId: string): Promise<void> => {
+  // First delete all operation fills for this group
+  const { error: fillsError } = await supabase
+    .from('operation_fills')
+    .delete()
+    .eq('group_id', operationId);
+
+  if (fillsError) {
+    console.error('Error deleting operation fills:', fillsError);
+    throw fillsError;
+  }
+
+  // Then delete the operation group
+  const { error: groupError } = await supabase
+    .from('operation_groups')
+    .delete()
+    .eq('id', operationId);
+
+  if (groupError) {
+    console.error('Error deleting operation group:', groupError);
+    throw groupError;
+  }
+};
 // Watchlist operations (stored in user profile or separate table)
 export const fetchWatchlist = async (): Promise<WatchlistItem[]> => {
   // For now, return the symbols that are commonly watched
