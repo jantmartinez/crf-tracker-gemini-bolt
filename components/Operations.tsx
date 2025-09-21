@@ -113,7 +113,7 @@ export const OpenOperationModal: React.FC<OpenOperationModalProps> = ({ isOpen, 
           {/* Commission Settings */}
           <div className="border-t border-gray-700 pt-4">
             <h3 className="text-lg font-semibold text-gray-200 mb-3">Commission Settings</h3>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label htmlFor="openCommission" className="block text-sm font-medium text-gray-400 mb-1">Open Commission (%)</label>
                 <input id="openCommission" type="number" step="0.01" min="0" max="10" value={openCommission} onChange={(e) => setOpenCommission(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="0.1" />
