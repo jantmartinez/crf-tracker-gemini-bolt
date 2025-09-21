@@ -23,8 +23,8 @@ export const fetchAccounts = async (): Promise<Account[]> => {
     startingBalance: account.starting_balance,
     createdAt: account.created_at,
     status: (account.is_active ? 'active' : 'inactive') as 'active' | 'inactive',
-    openCloseCommission: account.open_close_commission || 0.25,
-    nightCommission: account.night_commission || 7.0
+    openCloseCommission: account.open_close_commission ?? 0.25,
+    nightCommission: account.night_commission ?? 7.0
   }));
 };
 
@@ -36,8 +36,8 @@ export const createAccount = async (account: Omit<Account, 'id' | 'createdAt' | 
       starting_balance: account.startingBalance,
       current_balance: account.startingBalance,
       is_active: true,
-      open_close_commission: account.openCloseCommission || 0.25,
-      night_commission: account.nightCommission || 7.0
+      open_close_commission: account.openCloseCommission ?? 0.25,
+      night_commission: account.nightCommission ?? 7.0
     })
     .select()
     .single();
@@ -53,8 +53,8 @@ export const createAccount = async (account: Omit<Account, 'id' | 'createdAt' | 
     startingBalance: data.starting_balance,
     createdAt: data.created_at,
     status: 'active',
-    openCloseCommission: data.open_close_commission,
-    nightCommission: data.night_commission
+    openCloseCommission: data.open_close_commission ?? 0.25,
+    nightCommission: data.night_commission ?? 7.0
   };
 };
 
