@@ -131,25 +131,24 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
       if (monthlyData.has(monthKey)) {
         const monthData = monthlyData.get(monthKey);
         monthData.trades += 1;
-        monthData.realizedPnl += trade.pnl!;
         runningEquity += trade.pnl!;
         monthData.equity = runningEquity;
-      }
-    });
-
-    // Update equity for months after the last trade
-    const monthlyArray = Array.from(monthlyData.values());
-    let lastEquity = startingBalance;
-    
-    monthlyArray.forEach(monthData => {
-      if (monthData.equity > lastEquity || monthData.trades > 0) {
-        lastEquity = monthData.equity;
-      } else {
-        monthData.equity = lastEquity;
+        
+        // Update all subsequent months with the new equity level
+        const currentMonthIndex = Array.from(monthlyData.keys()).indexOf(monthKey);
+        const monthKeys = Array.from(monthlyData.keys());
+        
+        for (let i = currentMonthIndex + 1; i < monthKeys.length; i++) {
+          const futureMonthData = monthlyData.get(monthKeys[i]);
+          if (futureMonthData.trades === 0) {
+            futureMonthData.equity = runningEquity;
+          }
+        }
       }
     });
 
     // Add unrealized P&L to current month
+    const monthlyArray = Array.from(monthlyData.values());
     if (monthlyArray.length > 0) {
       monthlyArray[monthlyArray.length - 1].equity += unrealizedPnl;
     }
