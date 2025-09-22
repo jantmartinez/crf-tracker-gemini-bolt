@@ -174,6 +174,55 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
       </div>
 
       <div className="space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <TableCard title="Open Positions" headers={['Symbol', 'Quantity', 'Unrealized P&L', 'Actions']}>
+              {openTrades.length > 0 ? openTrades.map(trade => (
+                  <tr key={trade.id} className="border-b border-gray-700 hover:bg-gray-700/50">
+                    <td className="p-4 font-bold">{trade.symbol}</td>
+                    <td className="p-4">{trade.quantity}</td>
+                    <td className={`p-4 font-mono text-right ${trade.pnl! >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>{trade.pnl?.toFixed(2)} USD</td>
+                    <td className="p-4 text-center">
+                        <button onClick={() => handleClosePosition(trade)} className="text-gray-400 hover:text-brand-red" title="Close position">
+                          <i className="ri-close-line"></i>
+                        </button>
+                    </td>
+                  </tr>
+              ))
+              : <tr><td colSpan={4} className="text-center p-8 text-gray-500">No open positions.</td></tr>}
+            </TableCard>
+            <TableCard title="Watchlist" headers={['Symbol', 'Company Name', 'Price', 'Actions']}>
+            {watchlist.length > 0 ? (
+              watchlist.map(item => (
+                <tr key={item.symbol} className="border-b border-gray-700 hover:bg-gray-700/50">
+                  <td className="p-4 font-bold">{item.symbol}</td>
+                  <td className="p-4">{item.companyName}</td>
+                  <td className="p-4 font-mono text-right">${item.currentPrice.toFixed(2)}</td>
+                  <td className="p-4">
+                    <div className="flex justify-center items-center space-x-4">
+                        <button onClick={() => handleAddOperation(item.symbol, item.currentPrice)} className="text-gray-400 hover:text-brand-blue" title="Open new operation">
+                            <AddIcon />
+                        </button>
+                        <button onClick={() => removeFromWatchlist(item.symbol)} className="text-gray-400 hover:text-brand-red" title="Remove from watchlist">
+                            <TrashIcon />
+                        </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="text-center p-8 text-gray-500">
+                  Your watchlist is empty.
+                </td>
+              </tr>
+            )}
+          </TableCard>
+        </div>
+        <TableCard title="Recent Trades" headers={['Symbol', 'Result', 'Profit/Loss']}>
+            {recentTrades.length > 0 ? recentTrades.map(trade => <RecentTradeRow key={trade.id} trade={trade} />)
+            : <tr><td colSpan={3} className="text-center p-8 text-gray-500">No recent trades.</td></tr>}
+        </TableCard>
+        
         {/* Equity and Trades Chart */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
           <h3 className="text-lg font-semibold mb-4 text-gray-200">Equity Progression & Trading Activity</h3>
@@ -240,55 +289,6 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
             </ResponsiveContainer>
           </div>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <TableCard title="Open Positions" headers={['Symbol', 'Quantity', 'Unrealized P&L', 'Actions']}>
-              {openTrades.length > 0 ? openTrades.map(trade => (
-                  <tr key={trade.id} className="border-b border-gray-700 hover:bg-gray-700/50">
-                    <td className="p-4 font-bold">{trade.symbol}</td>
-                    <td className="p-4">{trade.quantity}</td>
-                    <td className={`p-4 font-mono text-right ${trade.pnl! >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>{trade.pnl?.toFixed(2)} USD</td>
-                    <td className="p-4 text-center">
-                        <button onClick={() => handleClosePosition(trade)} className="text-gray-400 hover:text-brand-red" title="Close position">
-                          <i className="ri-close-line"></i>
-                        </button>
-                    </td>
-                  </tr>
-              ))
-              : <tr><td colSpan={4} className="text-center p-8 text-gray-500">No open positions.</td></tr>}
-            </TableCard>
-            <TableCard title="Watchlist" headers={['Symbol', 'Company Name', 'Price', 'Actions']}>
-            {watchlist.length > 0 ? (
-              watchlist.map(item => (
-                <tr key={item.symbol} className="border-b border-gray-700 hover:bg-gray-700/50">
-                  <td className="p-4 font-bold">{item.symbol}</td>
-                  <td className="p-4">{item.companyName}</td>
-                  <td className="p-4 font-mono text-right">${item.currentPrice.toFixed(2)}</td>
-                  <td className="p-4">
-                    <div className="flex justify-center items-center space-x-4">
-                        <button onClick={() => handleAddOperation(item.symbol, item.currentPrice)} className="text-gray-400 hover:text-brand-blue" title="Open new operation">
-                            <AddIcon />
-                        </button>
-                        <button onClick={() => removeFromWatchlist(item.symbol)} className="text-gray-400 hover:text-brand-red" title="Remove from watchlist">
-                            <TrashIcon />
-                        </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={4} className="text-center p-8 text-gray-500">
-                  Your watchlist is empty.
-                </td>
-              </tr>
-            )}
-          </TableCard>
-        </div>
-        <TableCard title="Recent Trades" headers={['Symbol', 'Result', 'Profit/Loss']}>
-            {recentTrades.length > 0 ? recentTrades.map(trade => <RecentTradeRow key={trade.id} trade={trade} />)
-            : <tr><td colSpan={3} className="text-center p-8 text-gray-500">No recent trades.</td></tr>}
-        </TableCard>
       </div>
 
        {isModalOpen && (
