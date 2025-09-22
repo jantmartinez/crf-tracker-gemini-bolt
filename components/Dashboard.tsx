@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { Trade, Account, WatchlistItem } from '../types';
 import { TradeStatus } from '../types';
 import { TrashIcon, AddIcon } from './Icons';
@@ -86,6 +87,67 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
     setTradeToClose(trade);
   };
 
+  // Generate monthly equity and trade count data
+  const generateMonthlyData = () => {
+    const monthlyData = new Map();
+    const currentDate = new Date();
+    
+    // Initialize last 12 months
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const monthKey = date.toISOString().slice(0, 7); // YYYY-MM format
+      const monthName = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      
+      monthlyData.set(monthKey, {
+        month: monthName,
+        equity: startingBalance,
+        trades: 0,
+        realizedPnl: 0
+      });
+    }
+
+    // Process closed trades to calculate monthly equity progression
+    const sortedClosedTrades = [...closedTrades].sort((a, b) => 
+      new Date(a.closedAt!).getTime() - new Date(b.closedAt!).getTime()
+    );
+
+    let runningEquity = startingBalance;
+    
+    sortedClosedTrades.forEach(trade => {
+      const tradeDate = new Date(trade.closedAt!);
+      const monthKey = tradeDate.toISOString().slice(0, 7);
+      
+      if (monthlyData.has(monthKey)) {
+        const monthData = monthlyData.get(monthKey);
+        monthData.trades += 1;
+        monthData.realizedPnl += trade.pnl!;
+        runningEquity += trade.pnl!;
+        monthData.equity = runningEquity;
+      }
+    });
+
+    // Update equity for months after the last trade
+    const monthlyArray = Array.from(monthlyData.values());
+    let lastEquity = startingBalance;
+    
+    monthlyArray.forEach(monthData => {
+      if (monthData.equity > lastEquity || monthData.trades > 0) {
+        lastEquity = monthData.equity;
+      } else {
+        monthData.equity = lastEquity;
+      }
+    });
+
+    // Add unrealized P&L to current month
+    if (monthlyArray.length > 0) {
+      monthlyArray[monthlyArray.length - 1].equity += unrealizedPnl;
+    }
+
+    return monthlyArray;
+  };
+
+  const monthlyData = generateMonthlyData();
+
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold text-gray-200">Dashboard</h1>
@@ -102,6 +164,73 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
       </div>
 
       <div className="space-y-8">
+        {/* Equity and Trades Chart */}
+        <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+          <h3 className="text-lg font-semibold mb-4 text-gray-200">Equity Progression & Trading Activity</h3>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <ComposedChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis 
+                  dataKey="month" 
+                  stroke="#9CA3AF"
+                  fontSize={12}
+                />
+                <YAxis 
+                  yAxisId="equity"
+                  stroke="#3B82F6"
+                  fontSize={12}
+                  tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                />
+                <YAxis 
+                  yAxisId="trades"
+                  orientation="right"
+                  stroke="#22C55E"
+                  fontSize={12}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#1F2937', 
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    color: '#E5E7EB'
+                  }}
+                  formatter={(value, name) => {
+                    if (name === 'equity') {
+                      return [`$${Number(value).toLocaleString()}`, 'Equity'];
+                    }
+                    if (name === 'trades') {
+                      return [value, 'Trades'];
+                    }
+                    return [value, name];
+                  }}
+                />
+                <Legend 
+                  wrapperStyle={{ color: '#E5E7EB' }}
+                />
+                <Bar 
+                  yAxisId="equity"
+                  dataKey="equity" 
+                  fill="#3B82F6" 
+                  name="equity"
+                  opacity={0.8}
+                  radius={[2, 2, 0, 0]}
+                />
+                <Line 
+                  yAxisId="trades"
+                  type="monotone" 
+                  dataKey="trades" 
+                  stroke="#22C55E" 
+                  strokeWidth={3}
+                  name="trades"
+                  dot={{ fill: '#22C55E', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, stroke: '#22C55E', strokeWidth: 2 }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <TableCard title="Open Positions" headers={['Symbol', 'Quantity', 'Unrealized P&L', 'Actions']}>
               {openTrades.length > 0 ? openTrades.map(trade => (
