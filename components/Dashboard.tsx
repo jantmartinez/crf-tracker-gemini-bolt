@@ -112,7 +112,7 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
       monthlyData.set(monthKey, {
         month: monthName,
         equity: startingBalance,
-        trades: 0,
+        winRate: 0,
         realizedPnl: 0
       });
     }
@@ -123,27 +123,33 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
     );
 
     let runningEquity = startingBalance;
-    let cumulativeTrades = 0;
+    let cumulativeWins = 0;
+    let cumulativeTotalTrades = 0;
     
     sortedClosedTrades.forEach(trade => {
       const tradeDate = new Date(trade.closedAt!);
       const monthKey = tradeDate.toISOString().slice(0, 7);
       
       if (monthlyData.has(monthKey)) {
-        cumulativeTrades += 1;
+        cumulativeTotalTrades += 1;
+        if (trade.pnl! > 0) {
+          cumulativeWins += 1;
+        }
         runningEquity += trade.pnl!;
+        const currentWinRate = cumulativeTotalTrades > 0 ? (cumulativeWins / cumulativeTotalTrades) * 100 : 0;
+        
         const monthData = monthlyData.get(monthKey);
         monthData.equity = runningEquity;
-        monthData.trades = cumulativeTrades;
+        monthData.winRate = currentWinRate;
         
-        // Update all subsequent months with the new equity level and trade count
+        // Update all subsequent months with the new equity level and win rate
         const currentMonthIndex = Array.from(monthlyData.keys()).indexOf(monthKey);
         const monthKeys = Array.from(monthlyData.keys());
         
         for (let i = currentMonthIndex + 1; i < monthKeys.length; i++) {
           const futureMonthData = monthlyData.get(monthKeys[i]);
           futureMonthData.equity = runningEquity;
-          futureMonthData.trades = cumulativeTrades;
+          futureMonthData.winRate = currentWinRate;
         }
       }
     });
@@ -226,7 +232,7 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
         
         {/* Equity and Trades Chart */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-          <h3 className="text-lg font-semibold mb-4 text-gray-200">Equity Progression & Trading Activity</h3>
+          <h3 className="text-lg font-semibold mb-4 text-gray-200">Equity Progression & Win Rate</h3>
           <div style={{ width: '100%', height: 300 }}>
             <ResponsiveContainer>
               <ComposedChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -243,10 +249,12 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
                   tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                 />
                 <YAxis 
-                  yAxisId="trades"
+                  yAxisId="winRate"
                   orientation="right"
                   stroke="#22C55E"
                   fontSize={12}
+                  domain={[0, 100]}
+                  tickFormatter={(value) => `${value.toFixed(0)}%`}
                 />
                 <Tooltip 
                   contentStyle={{ 
@@ -259,8 +267,8 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
                     if (name === 'equity') {
                       return [`$${Number(value).toLocaleString()}`, 'Equity'];
                     }
-                    if (name === 'trades') {
-                      return [value, 'Trades'];
+                    if (name === 'winRate') {
+                      return [`${Number(value).toFixed(1)}%`, 'Win Rate'];
                     }
                     return [value, name];
                   }}
@@ -277,12 +285,12 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
                   radius={[2, 2, 0, 0]}
                 />
                 <Line 
-                  yAxisId="trades"
+                  yAxisId="winRate"
                   type="monotone" 
-                  dataKey="trades" 
+                  dataKey="winRate" 
                   stroke="#22C55E" 
                   strokeWidth={3}
-                  name="trades"
+                  name="winRate"
                   dot={{ fill: '#22C55E', strokeWidth: 2, r: 4 }}
                   activeDot={{ r: 6, stroke: '#22C55E', strokeWidth: 2 }}
                 />
