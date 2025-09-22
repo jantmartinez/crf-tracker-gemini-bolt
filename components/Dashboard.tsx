@@ -90,11 +90,22 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
   // Generate monthly equity and trade count data
   const generateMonthlyData = () => {
     const monthlyData = new Map();
-    const currentDate = new Date();
     
-    // Initialize last 12 months
-    for (let i = 11; i >= 0; i--) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    // Find the earliest account creation date
+    const earliestAccountDate = accounts.length > 0 
+      ? new Date(Math.min(...accounts.map(acc => new Date(acc.createdAt).getTime())))
+      : new Date();
+    
+    const currentDate = new Date();
+    const startDate = new Date(earliestAccountDate.getFullYear(), earliestAccountDate.getMonth(), 1);
+    
+    // Calculate months from earliest account to current month
+    const monthsDiff = (currentDate.getFullYear() - startDate.getFullYear()) * 12 + 
+                      (currentDate.getMonth() - startDate.getMonth()) + 1;
+    
+    // Initialize all months from earliest account creation to current month
+    for (let i = 0; i < monthsDiff; i++) {
+      const date = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
       const monthKey = date.toISOString().slice(0, 7); // YYYY-MM format
       const monthName = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
       
