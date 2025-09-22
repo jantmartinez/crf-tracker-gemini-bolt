@@ -117,32 +117,33 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
       });
     }
 
-    // Process closed trades to calculate monthly equity progression
+    // Process closed trades to calculate monthly equity progression and trade counts
     const sortedClosedTrades = [...closedTrades].sort((a, b) => 
       new Date(a.closedAt!).getTime() - new Date(b.closedAt!).getTime()
     );
 
     let runningEquity = startingBalance;
+    let cumulativeTrades = 0;
     
     sortedClosedTrades.forEach(trade => {
       const tradeDate = new Date(trade.closedAt!);
       const monthKey = tradeDate.toISOString().slice(0, 7);
       
       if (monthlyData.has(monthKey)) {
-        const monthData = monthlyData.get(monthKey);
-        monthData.trades += 1;
+        cumulativeTrades += 1;
         runningEquity += trade.pnl!;
+        const monthData = monthlyData.get(monthKey);
         monthData.equity = runningEquity;
+        monthData.trades = cumulativeTrades;
         
-        // Update all subsequent months with the new equity level
+        // Update all subsequent months with the new equity level and trade count
         const currentMonthIndex = Array.from(monthlyData.keys()).indexOf(monthKey);
         const monthKeys = Array.from(monthlyData.keys());
         
         for (let i = currentMonthIndex + 1; i < monthKeys.length; i++) {
           const futureMonthData = monthlyData.get(monthKeys[i]);
-          if (futureMonthData.trades === 0) {
-            futureMonthData.equity = runningEquity;
-          }
+          futureMonthData.equity = runningEquity;
+          futureMonthData.trades = cumulativeTrades;
         }
       }
     });
