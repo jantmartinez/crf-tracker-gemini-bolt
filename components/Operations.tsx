@@ -205,35 +205,188 @@ export interface CloseOperationModalProps {
     trade: Trade;
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (tradeId: string, closePrice: number) => void;
+    onConfirm: (tradeId: string, closePrice: number, closePercentage?: number) => void;
 }
 
 export const CloseOperationModal: React.FC<CloseOperationModalProps> = ({ trade, isOpen, onClose, onConfirm }) => {
     const [closePrice, setClosePrice] = useState('');
+    const [closePercentage, setClosePercentage] = useState('100');
+    const [closeType, setCloseType] = useState<'percentage' | 'quantity'>('percentage');
+    const [closeQuantity, setCloseQuantity] = useState('');
 
     if (!isOpen) return null;
 
+    const calculateQuantityFromPercentage = () => {
+        const percentage = parseFloat(closePercentage || '0');
+        return (trade.quantity * percentage) / 100;
+    };
+
+    const calculatePercentageFromQuantity = () => {
+        const quantity = parseFloat(closeQuantity || '0');
+        return (quantity / trade.quantity) * 100;
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (closePrice) {
-            onConfirm(trade.id, parseFloat(closePrice));
+        if (closePrice && (closePercentage || closeQuantity)) {
+            const finalPercentage = closeType === 'percentage' 
+                ? parseFloat(closePercentage)
+                : calculatePercentageFromQuantity();
+            
+            // Validate percentage is within bounds
+            if (finalPercentage <= 0 || finalPercentage > 100) {
+                alert('Close percentage must be between 0.01% and 100%');
+                return;
+            }
+            
+            onConfirm(trade.id, parseFloat(closePrice), finalPercentage);
             onClose();
         }
     };
 
+    const quantityToClose = closeType === 'percentage' 
+        ? calculateQuantityFromPercentage()
+        : parseFloat(closeQuantity || '0');
+
+    const remainingQuantity = trade.quantity - quantityToClose;
+    const isPartialClose = quantityToClose < trade.quantity && quantityToClose > 0;
+
     return (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50" onClick={onClose}>
-            <div className="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-lg" onClick={e => e.stopPropagation()}>
                 <h2 className="text-2xl font-bold mb-2 text-gray-200">Close Operation</h2>
-                <p className="text-gray-400 mb-6">Closing {trade.tradeType.toUpperCase()} position for {trade.symbol}.</p>
+                <p className="text-gray-400 mb-6">
+                    {trade.tradeType.toUpperCase()} position for {trade.symbol} - Current: {trade.quantity} units
+                </p>
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Close Type Selection */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">Close Method</label>
+                        <div className="flex space-x-4">
+                            <label className="flex items-center">
+                                <input
+                                    type="radio"
+                                    value="percentage"
+                                    checked={closeType === 'percentage'}
+                                    onChange={(e) => setCloseType(e.target.value as 'percentage')}
+                                    className="mr-2"
+                                />
+                                <span className="text-gray-200">Percentage</span>
+                            </label>
+                            <label className="flex items-center">
+                                <input
+                                    type="radio"
+                                    value="quantity"
+                                    checked={closeType === 'quantity'}
+                                    onChange={(e) => setCloseType(e.target.value as 'quantity')}
+                                    className="mr-2"
+                                />
+                                <span className="text-gray-200">Quantity</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Close Amount Input */}
+                    {closeType === 'percentage' ? (
+                        <div>
+                            <label htmlFor="closePercentage" className="block text-sm font-medium text-gray-400 mb-1">
+                                Close Percentage (%)
+                            </label>
+                            <input
+                                id="closePercentage"
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                max="100"
+                                value={closePercentage}
+                                onChange={e => setClosePercentage(e.target.value)}
+                                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-red"
+                                placeholder="100"
+                                required
+                            />
+                        </div>
+                    ) : (
+                        <div>
+                            <label htmlFor="closeQuantity" className="block text-sm font-medium text-gray-400 mb-1">
+                                Close Quantity (max: {trade.quantity})
+                            </label>
+                            <input
+                                id="closeQuantity"
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                max={trade.quantity}
+                                value={closeQuantity}
+                                onChange={e => setCloseQuantity(e.target.value)}
+                                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-red"
+                                placeholder={trade.quantity.toString()}
+                                required
+                            />
+                        </div>
+                    )}
+
                     <div>
                         <label htmlFor="closePrice" className="block text-sm font-medium text-gray-400 mb-1">Close Price</label>
-                        <input id="closePrice" type="number" step="any" value={closePrice} onChange={e => setClosePrice(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-red" autoFocus required />
+                        <input
+                            id="closePrice"
+                            type="number"
+                            step="any"
+                            value={closePrice}
+                            onChange={e => setClosePrice(e.target.value)}
+                            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-red"
+                            autoFocus
+                            required
+                        />
                     </div>
+
+                    {/* Position Summary */}
+                    {quantityToClose > 0 && closePrice && (
+                        <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                            <h4 className="text-sm font-semibold text-gray-200 mb-2">Position Summary</h4>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <p className="text-gray-400">Closing Quantity</p>
+                                    <p className="font-bold text-brand-red">{quantityToClose.toFixed(2)} units</p>
+                                </div>
+                                <div>
+                                    <p className="text-gray-400">Remaining Quantity</p>
+                                    <p className="font-bold text-gray-200">
+                                        {remainingQuantity.toFixed(2)} units
+                                        {remainingQuantity <= 0 && <span className="text-brand-red ml-1">(Position Closed)</span>}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-gray-400">Close Value</p>
+                                    <p className="font-bold text-gray-200">${(quantityToClose * parseFloat(closePrice)).toFixed(2)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-gray-400">Est. P&L (Gross)</p>
+                                    <p className={`font-bold ${
+                                        trade.tradeType === 'long' 
+                                            ? (parseFloat(closePrice) - trade.openPrice) >= 0 ? 'text-brand-green' : 'text-brand-red'
+                                            : (trade.openPrice - parseFloat(closePrice)) >= 0 ? 'text-brand-green' : 'text-brand-red'
+                                    }`}>
+                                        ${trade.tradeType === 'long' 
+                                            ? ((parseFloat(closePrice) - trade.openPrice) * quantityToClose).toFixed(2)
+                                            : ((trade.openPrice - parseFloat(closePrice)) * quantityToClose).toFixed(2)
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                            {isPartialClose && (
+                                <div className="mt-2 p-2 bg-yellow-500/20 border border-yellow-500/50 rounded text-yellow-400 text-xs">
+                                    <i className="ri-information-line mr-1"></i>
+                                    This is a partial close. The remaining position will stay open.
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <div className="flex justify-end space-x-4 pt-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-700">Cancel</button>
-                        <button type="submit" className="px-6 py-2 rounded-lg bg-brand-red text-white font-bold hover:bg-red-500">Confirm Close</button>
+                        <button type="submit" className="px-6 py-2 rounded-lg bg-brand-red text-white font-bold hover:bg-red-500">
+                            {isPartialClose ? 'Partial Close' : 'Close Position'}
+                        </button>
                     </div>
                 </form>
             </div>
@@ -426,7 +579,7 @@ interface OperationsProps {
   trades: Trade[];
   accounts: Account[];
   addTrade: (tradeData: Omit<Trade, 'id' | 'status' | 'openAt' | 'pnl'>) => void;
-  closeTrade: (tradeId: string, closePrice: number) => void;
+  closeTrade: (tradeId: string, closePrice: number, closePercentage?: number) => void;
   deleteTrade: (tradeId: string) => void;
 }
 

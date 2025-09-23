@@ -12,7 +12,7 @@ interface DashboardProps {
   watchlist: WatchlistItem[];
   removeFromWatchlist: (symbol: string) => void;
   addTrade: (tradeData: Omit<Trade, 'id' | 'status' | 'openAt' | 'pnl'>) => void;
-  closeTrade: (tradeId: string, closePrice: number) => void;
+  closeTrade: (tradeId: string, closePrice: number, closePercentage?: number) => void;
 }
 
 const KpiCard: React.FC<{ title: string; value: string | number; change?: string; colorClass?: string }> = ({ title, value, change, colorClass = 'text-gray-200' }) => (

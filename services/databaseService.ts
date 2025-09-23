@@ -345,6 +345,19 @@ export const closeTrade = async (tradeId: string, closePrice: number): Promise<v
 }
 
 export const closeTradeInDb = async (tradeId: string, closePrice: number): Promise<void> => {
+  await partialCloseTradeInDb(tradeId, closePrice, 100); // Close 100% of position
+};
+
+export const partialCloseTradeInDb = async (
+  tradeId: string, 
+  closePrice: number, 
+  closePercentage: number
+): Promise<void> => {
+  // Validate input parameters
+  if (closePercentage <= 0 || closePercentage > 100) {
+    throw new Error('Close percentage must be between 0.01% and 100%');
+  }
+
   // Get the operation group and its fills
   const { data: group, error: groupError } = await supabase
     .from('operation_groups')
@@ -366,12 +379,6 @@ export const closeTradeInDb = async (tradeId: string, closePrice: number): Promi
   const closeDate = new Date();
   const daysHeld = Math.ceil((closeDate.getTime() - openDate.getTime()) / (1000 * 60 * 60 * 24));
   
-  // Calculate total position value from all fills
-  const totalPositionValue = group.operation_fills.reduce((sum, fill) => sum + (fill.quantity * fill.price), 0);
-  const nightCommissionRate = group.accounts?.night_commission || 7.0;
-  const nightCommissionPerDay = (totalPositionValue * nightCommissionRate) / 100 / 365;
-  const totalNightFees = nightCommissionPerDay * daysHeld;
-
   // Calculate total quantity to close and determine closing side
   const buyFills = group.operation_fills.filter(f => f.side === 'buy');
   const sellFills = group.operation_fills.filter(f => f.side === 'sell');
@@ -379,11 +386,17 @@ export const closeTradeInDb = async (tradeId: string, closePrice: number): Promi
   const totalSellQuantity = sellFills.reduce((sum, f) => sum + f.quantity, 0);
   
   const netQuantity = totalBuyQuantity - totalSellQuantity;
-  const quantityToClose = Math.abs(netQuantity);
+  const totalOpenQuantity = Math.abs(netQuantity);
+  const quantityToClose = (totalOpenQuantity * closePercentage) / 100;
   const closingSide = netQuantity > 0 ? 'sell' : 'buy'; // If net long, sell to close; if net short, buy to close
 
-  if (quantityToClose <= 0) {
+  if (totalOpenQuantity <= 0) {
     throw new Error('No open quantity to close');
+  }
+
+  // Validate minimum closing quantity (e.g., 0.01 shares)
+  if (quantityToClose < 0.01) {
+    throw new Error('Closing quantity too small. Minimum is 0.01 units.');
   }
 
   // Calculate closing fees (using account commission settings)
@@ -391,6 +404,13 @@ export const closeTradeInDb = async (tradeId: string, closePrice: number): Promi
   const positionValue = quantityToClose * closePrice;
   const closeCommission = account?.open_close_commission || 0.25;
   const closingFees = (positionValue * closeCommission) / 100;
+
+  // Calculate proportional night fees for the portion being closed
+  const totalPositionValue = group.operation_fills.reduce((sum, fill) => sum + (fill.quantity * fill.price), 0);
+  const nightCommissionRate = group.accounts?.night_commission || 7.0;
+  const nightCommissionPerDay = (totalPositionValue * nightCommissionRate) / 100 / 365;
+  const totalNightFees = nightCommissionPerDay * daysHeld;
+  const proportionalNightFees = (totalNightFees * closePercentage) / 100;
 
   // Create closing fill with proper fees
   const { error: fillError } = await supabase
@@ -403,7 +423,7 @@ export const closeTradeInDb = async (tradeId: string, closePrice: number): Promi
       fees: closingFees, // Keep for backward compatibility
       open_fee: 0,
       close_fee: closingFees,
-      night_fee: totalNightFees,
+      night_fee: proportionalNightFees,
       fee_currency: 'USD',
       leverage: 1 // Default leverage for closing
     });
@@ -413,31 +433,38 @@ export const closeTradeInDb = async (tradeId: string, closePrice: number): Promi
     throw fillError;
   }
 
-  // Update night fees for all existing fills in this operation
-  const { error: updateNightFeesError } = await supabase
-    .from('operation_fills')
-    .update({
-      night_fee: totalNightFees / group.operation_fills.length // Distribute night fees across all fills
-    })
-    .eq('group_id', tradeId);
+  // If this is a complete close (100%), update the operation group status
+  if (closePercentage >= 100) {
+    // Update night fees for all existing fills in this operation
+    const { error: updateNightFeesError } = await supabase
+      .from('operation_fills')
+      .update({
+        night_fee: totalNightFees / group.operation_fills.length // Distribute night fees across all fills
+      })
+      .eq('group_id', tradeId);
 
-  if (updateNightFeesError) {
-    console.error('Error updating night fees:', updateNightFeesError);
-    throw updateNightFeesError;
-  }
+    if (updateNightFeesError) {
+      console.error('Error updating night fees:', updateNightFeesError);
+      throw updateNightFeesError;
+    }
 
-  // Update operation group status
-  const { error: updateError } = await supabase
-    .from('operation_groups')
-    .update({
-      status: 'closed',
-      closed_at: new Date().toISOString()
-    })
-    .eq('id', tradeId);
+    // Update operation group status to closed
+    const { error: updateError } = await supabase
+      .from('operation_groups')
+      .update({
+        status: 'closed',
+        closed_at: new Date().toISOString()
+      })
+      .eq('id', tradeId);
 
-  if (updateError) {
-    console.error('Error updating operation group:', updateError);
-    throw updateError;
+    if (updateError) {
+      console.error('Error updating operation group:', updateError);
+      throw updateError;
+    }
+  } else {
+    // For partial closes, keep the operation group open
+    // The remaining quantity will be calculated dynamically when fetching trades
+    console.log(`Partially closed ${closePercentage}% of position ${tradeId}`);
   }
 };
 
