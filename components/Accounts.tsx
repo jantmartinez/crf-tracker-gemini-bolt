@@ -148,6 +148,11 @@ const AccountCard: React.FC<{
       <p className="text-3xl font-mono font-bold text-brand-blue">${account.startingBalance.toLocaleString()}</p>
     </div>
     
+    <div className="mt-4">
+      <p className="text-gray-400">Current Balance</p>
+      <p className="text-2xl font-mono font-bold text-gray-200">${account.startingBalance.toLocaleString()}</p>
+    </div>
+    
     {/* Commission Settings Section */}
     <div className="mt-6 pt-4 border-t border-gray-700">
       <div className="flex justify-between items-center mb-3">
