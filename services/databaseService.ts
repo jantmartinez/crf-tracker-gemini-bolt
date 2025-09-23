@@ -297,6 +297,17 @@ export const createTrade = async (tradeData: Omit<Trade, 'id' | 'status' | 'open
   // Create initial fill (opening position) with proper side based on trade type
   const side = tradeData.tradeType === TradeType.LONG ? 'buy' : 'sell';
   
+  // Calculate opening fees based on account commission settings
+  const account = await supabase
+    .from('accounts')
+    .select('open_close_commission')
+    .eq('id', tradeData.accountId)
+    .single();
+
+  const positionValue = tradeData.quantity * tradeData.openPrice;
+  const openCommission = account.data?.open_close_commission || 0.25;
+  const openingFees = (positionValue * openCommission) / 100;
+
   const { error: fillError } = await supabase
     .from('operation_fills')
     .insert({
@@ -304,7 +315,11 @@ export const createTrade = async (tradeData: Omit<Trade, 'id' | 'status' | 'open
       side: side,
       quantity: tradeData.quantity,
       price: tradeData.openPrice,
-      fees: 0, // Will be calculated based on commission settings
+      fees: openingFees, // Keep for backward compatibility
+      open_fee: openingFees,
+      close_fee: 0,
+      night_fee: 0,
+      fee_currency: 'USD',
       leverage: 5 // Default leverage, should come from trade data in real implementation
     });
 
@@ -396,6 +411,19 @@ export const closeTradeInDb = async (tradeId: string, closePrice: number): Promi
   if (fillError) {
     console.error('Error creating closing fill:', fillError);
     throw fillError;
+  }
+
+  // Update night fees for all existing fills in this operation
+  const { error: updateNightFeesError } = await supabase
+    .from('operation_fills')
+    .update({
+      night_fee: totalNightFees / group.operation_fills.length // Distribute night fees across all fills
+    })
+    .eq('group_id', tradeId);
+
+  if (updateNightFeesError) {
+    console.error('Error updating night fees:', updateNightFeesError);
+    throw updateNightFeesError;
   }
 
   // Update operation group status
