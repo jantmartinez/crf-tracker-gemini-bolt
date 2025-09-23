@@ -54,6 +54,10 @@ export const OpenOperationModal: React.FC<OpenOperationModalProps> = ({ isOpen, 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (symbol && quantity && openPrice && accountId && leverage) {
+      // Calculate opening fees
+      const positionValue = parseFloat(quantity) * parseFloat(openPrice);
+      const openingFees = (positionValue * parseFloat(openCommission)) / 100;
+      
       onAdd({
         symbol: symbol.toUpperCase(),
         tradeType,
@@ -68,9 +72,9 @@ export const OpenOperationModal: React.FC<OpenOperationModalProps> = ({ isOpen, 
       setOpenPrice('');
       setLeverage('5');
       setEstimatedDays('7');
-      setOpenCommission('0.1');
-      setCloseCommission('0.1');
-      setNightCommission('0.05');
+      setOpenCommission(selectedAccount?.openCloseCommission.toString() || '0.25');
+      setCloseCommission(selectedAccount?.openCloseCommission.toString() || '0.25');
+      setNightCommission(selectedAccount?.nightCommission.toString() || '7.0');
     }
   };
 

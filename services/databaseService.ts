@@ -176,7 +176,8 @@ export const fetchTrades = async (): Promise<Trade[]> => {
     .select(`
       *,
       symbols (ticker),
-      operation_fills (*)
+      operation_fills (*),
+      accounts (open_close_commission, night_commission)
     `)
     .order('created_at', { ascending: false });
 
@@ -192,40 +193,73 @@ export const fetchTrades = async (): Promise<Trade[]> => {
     
     const totalBuyQuantity = buyFills.reduce((sum, f) => sum + f.quantity, 0);
     const totalSellQuantity = sellFills.reduce((sum, f) => sum + f.quantity, 0);
-    const netQuantity = totalBuyQuantity - totalSellQuantity;
     
-    const avgBuyPrice = buyFills.length > 0 
-      ? buyFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) / totalBuyQuantity
-      : 0;
+    // Determine trade type and net quantity
+    let tradeType: TradeType;
+    let netQuantity: number;
+    let openPrice: number;
+    
+    if (totalBuyQuantity > totalSellQuantity) {
+      // Long position (more buys than sells)
+      tradeType = TradeType.LONG;
+      netQuantity = totalBuyQuantity - totalSellQuantity;
+      openPrice = buyFills.length > 0 
+        ? buyFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) / totalBuyQuantity
+        : 0;
+    } else if (totalSellQuantity > totalBuyQuantity) {
+      // Short position (more sells than buys)
+      tradeType = TradeType.SHORT;
+      netQuantity = totalSellQuantity - totalBuyQuantity;
+      openPrice = sellFills.length > 0
+        ? sellFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) / totalSellQuantity
+        : 0;
+    } else {
+      // Flat position - determine by first fill
+      const firstFill = fills.sort((a, b) => new Date(a.fill_timestamp || a.created_at).getTime() - new Date(b.fill_timestamp || b.created_at).getTime())[0];
+      tradeType = firstFill?.side === 'buy' ? TradeType.LONG : TradeType.SHORT;
+      netQuantity = 0;
+      openPrice = firstFill?.price || 0;
+    }
     
     const avgSellPrice = sellFills.length > 0
       ? sellFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) / totalSellQuantity
       : 0;
 
-    // Calculate P&L
+    // Calculate P&L including fees
+    const totalFees = fills.reduce((sum, f) => sum + (f.fees || 0), 0);
     let pnl = 0;
+    
     if (group.status === 'closed') {
-      // For closed positions, calculate realized P&L
-      pnl = sellFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - 
-            buyFills.reduce((sum, f) => sum + (f.price * f.quantity), 0);
+      // For closed positions, calculate realized P&L minus fees
+      if (tradeType === TradeType.LONG) {
+        pnl = sellFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - 
+              buyFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - totalFees;
+      } else {
+        pnl = buyFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - 
+              sellFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - totalFees;
+      }
     } else {
-      // For open positions, we'd need current market price to calculate unrealized P&L
-      // For now, we'll set it to 0 and update it with real-time data later
-      pnl = 0;
+      // For open positions, calculate unrealized P&L (mock with 2% gain for demo)
+      const currentPrice = openPrice * 1.02; // Mock current price
+      if (tradeType === TradeType.LONG) {
+        pnl = (currentPrice - openPrice) * netQuantity - totalFees;
+      } else {
+        pnl = (openPrice - currentPrice) * netQuantity - totalFees;
+      }
     }
 
     return {
       id: group.id,
       symbol: group.symbols?.ticker || 'UNKNOWN',
-      quantity: Math.abs(netQuantity),
-      openPrice: avgBuyPrice,
+      quantity: Math.abs(netQuantity) || Math.max(totalBuyQuantity, totalSellQuantity),
+      openPrice: openPrice,
       closePrice: group.status === 'closed' ? avgSellPrice : undefined,
       status: group.status === 'closed' ? TradeStatus.CLOSED : TradeStatus.OPEN,
       pnl,
       accountId: group.account_id,
       openAt: group.created_at,
       closedAt: group.closed_at,
-      tradeType: netQuantity >= 0 ? TradeType.LONG : TradeType.SHORT
+      tradeType: tradeType
     };
   });
 };
@@ -250,15 +284,18 @@ export const createTrade = async (tradeData: Omit<Trade, 'id' | 'status' | 'open
     throw groupError;
   }
 
-  // Create initial fill (opening position)
+  // Create initial fill (opening position) with proper side based on trade type
+  const side = tradeData.tradeType === TradeType.LONG ? 'buy' : 'sell';
+  
   const { error: fillError } = await supabase
     .from('operation_fills')
     .insert({
       group_id: group.id,
-      side: 'buy', // Always start with a buy for simplicity
+      side: side,
       quantity: tradeData.quantity,
       price: tradeData.openPrice,
-      leverage: 1
+      fees: 0, // Will be calculated based on commission settings
+      leverage: 5 // Default leverage, should come from trade data in real implementation
     });
 
   if (fillError) {
@@ -288,7 +325,8 @@ export const closeTradeInDb = async (tradeId: string, closePrice: number): Promi
     .from('operation_groups')
     .select(`
       *,
-      operation_fills (*)
+      operation_fills (*),
+      accounts (open_close_commission, night_commission)
     `)
     .eq('id', tradeId)
     .single();
@@ -298,25 +336,36 @@ export const closeTradeInDb = async (tradeId: string, closePrice: number): Promi
     throw groupError;
   }
 
-  // Calculate total quantity to close
+  // Calculate total quantity to close and determine closing side
   const buyFills = group.operation_fills.filter(f => f.side === 'buy');
   const sellFills = group.operation_fills.filter(f => f.side === 'sell');
   const totalBuyQuantity = buyFills.reduce((sum, f) => sum + f.quantity, 0);
   const totalSellQuantity = sellFills.reduce((sum, f) => sum + f.quantity, 0);
-  const quantityToClose = totalBuyQuantity - totalSellQuantity;
+  
+  const netQuantity = totalBuyQuantity - totalSellQuantity;
+  const quantityToClose = Math.abs(netQuantity);
+  const closingSide = netQuantity > 0 ? 'sell' : 'buy'; // If net long, sell to close; if net short, buy to close
 
   if (quantityToClose <= 0) {
     throw new Error('No open quantity to close');
   }
 
-  // Create closing fill
+  // Calculate closing fees (using account commission settings)
+  const account = group.accounts;
+  const positionValue = quantityToClose * closePrice;
+  const closeCommission = account?.open_close_commission || 0.25;
+  const closingFees = (positionValue * closeCommission) / 100;
+
+  // Create closing fill with proper fees
   const { error: fillError } = await supabase
     .from('operation_fills')
     .insert({
       group_id: tradeId,
-      side: 'sell',
+      side: closingSide,
       quantity: quantityToClose,
-      price: closePrice
+      price: closePrice,
+      fees: closingFees,
+      leverage: 1 // Default leverage for closing
     });
 
   if (fillError) {
