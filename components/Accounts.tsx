@@ -9,6 +9,7 @@ interface AccountsProps {
   addAccount: (account: Omit<Account, 'id' | 'createdAt' | 'status'>) => void;
   removeAccount: (accountId: string) => void;
   updateAccount: (accountId: string, updates: Partial<Account>) => void;
+  trades: Trade[];
 }
 
 interface UserProfile {
@@ -57,6 +58,7 @@ const AccountCard: React.FC<{
   account: Account; 
   onRemove: (accountId: string) => void;
   onUpdate: (accountId: string, updates: Partial<Account>) => void;
+  trades: Trade[];
 }> = ({ account, onRemove, onUpdate }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -115,6 +117,12 @@ const AccountCard: React.FC<{
     setSaveMessage(null);
   };
 
+  // Calculate current balance based on starting balance + realized P&L from trades
+  const accountTrades = trades.filter(trade => trade.accountId === account.id);
+  const realizedPnl = accountTrades
+    .filter(trade => trade.status === TradeStatus.CLOSED)
+    .reduce((sum, trade) => sum + (trade.pnl || 0), 0);
+  const currentBalance = account.startingBalance + realizedPnl;
   return (
     <>
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 transition-all hover:border-brand-blue hover:shadow-2xl">
@@ -150,7 +158,7 @@ const AccountCard: React.FC<{
     
     <div className="mt-4">
       <p className="text-gray-400">Current Balance</p>
-      <p className="text-2xl font-mono font-bold text-gray-200">${account.startingBalance.toLocaleString()}</p>
+      <p className="text-2xl font-mono font-bold text-gray-200">${currentBalance.toLocaleString()}</p>
     </div>
     
     {/* Commission Settings Section */}
@@ -302,7 +310,7 @@ const AddAccountModal: React.FC<{ isOpen: boolean; onClose: () => void; onAdd: (
 };
 
 
-const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount, removeAccount, updateAccount }) => {
+const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount, removeAccount, updateAccount, trades }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [settings, setSettings] = useState<UserProfile>({
     base_currency: 'USD',
@@ -395,7 +403,7 @@ const Accounts: React.FC<AccountsProps> = ({ accounts, addAccount, removeAccount
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {accounts.map(acc => <AccountCard key={acc.id} account={acc} onRemove={removeAccount} onUpdate={updateAccount} />)}
+        {accounts.map(acc => <AccountCard key={acc.id} account={acc} onRemove={removeAccount} onUpdate={updateAccount} trades={trades} />)}
       </div>
 
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
