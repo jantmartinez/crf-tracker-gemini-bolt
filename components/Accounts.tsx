@@ -59,7 +59,7 @@ const AccountCard: React.FC<{
   onRemove: (accountId: string) => void;
   onUpdate: (accountId: string, updates: Partial<Account>) => void;
   trades: Trade[];
-}> = ({ account, onRemove, onUpdate }) => {
+}> = ({ account, onRemove, onUpdate, trades }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
