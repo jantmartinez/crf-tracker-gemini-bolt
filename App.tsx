@@ -10,7 +10,7 @@ import type { Page, Account, Trade, WatchlistItem } from './types';
 import { MOCK_WATCHLIST } from './constants';
 import { TradeStatus, TradeType } from './types';
 import { fetchAccounts, createAccount, deleteAccount, fetchTrades, createTrade, closeTradeInDb, fetchWatchlist, debugFetchProfiles } from './services/databaseService';
-import { deleteOperation } from './services/databaseService';
+import { deleteOperation, partialCloseTradeInDb } from './services/databaseService';
 
 
 const App: React.FC = () => {
@@ -100,8 +100,8 @@ const App: React.FC = () => {
       });
   }, []);
 
-  const closeTrade = useCallback((tradeId: string, closePrice: number) => {
-    closeTradeInDb(tradeId, closePrice)
+  const handleCloseTrade = useCallback((tradeId: string, closePrice: number, closePercentage: number = 100) => {
+    partialCloseTradeInDb(tradeId, closePrice, closePercentage)
       .then(() => {
         // Refresh trades data
         return fetchTrades();
@@ -167,15 +167,15 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (activePage) {
       case 'dashboard':
-        return <Dashboard accounts={accounts} trades={trades} watchlist={watchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} closeTrade={partialCloseTrade} />;
+        return <Dashboard accounts={accounts} trades={trades} watchlist={watchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} closeTrade={handleCloseTrade} />;
       case 'intelligence':
         return <Intelligence watchlist={watchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} accounts={accounts} />;
       case 'operations':
-        return <Operations trades={trades} accounts={accounts} addTrade={addTrade} closeTrade={partialCloseTrade} deleteTrade={deleteTrade} />;
+        return <Operations trades={trades} accounts={accounts} addTrade={addTrade} closeTrade={handleCloseTrade} deleteTrade={deleteTrade} />;
       case 'accounts':
         return <Accounts accounts={accounts} addAccount={addAccount} removeAccount={removeAccount} updateAccount={updateAccount} />;
       default:
-        return <Dashboard accounts={accounts} trades={trades} watchlist={watchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} closeTrade={partialCloseTrade} />;
+        return <Dashboard accounts={accounts} trades={trades} watchlist={watchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} closeTrade={handleCloseTrade} />;
     }
   };
 
