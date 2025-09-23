@@ -175,6 +175,10 @@ export interface Database {
           fill_timestamp: string | null;
           note: string | null;
           created_at: string | null;
+          open_fee: number | null;
+          close_fee: number | null;
+          night_fee: number | null;
+          fee_currency: string | null;
         };
         Insert: {
           id?: string;
@@ -187,6 +191,10 @@ export interface Database {
           fill_timestamp?: string | null;
           note?: string | null;
           created_at?: string | null;
+          open_fee?: number | null;
+          close_fee?: number | null;
+          night_fee?: number | null;
+          fee_currency?: string | null;
         };
         Update: {
           id?: string;
@@ -199,6 +207,10 @@ export interface Database {
           fill_timestamp?: string | null;
           note?: string | null;
           created_at?: string | null;
+          open_fee?: number | null;
+          close_fee?: number | null;
+          night_fee?: number | null;
+          fee_currency?: string | null;
         };
       };
       intelligence_data: {

@@ -226,7 +226,11 @@ export const fetchTrades = async (): Promise<Trade[]> => {
       : 0;
 
     // Calculate P&L including fees
-    const totalFees = fills.reduce((sum, f) => sum + (f.fees || 0), 0);
+    const totalOpenFees = fills.reduce((sum, f) => sum + (f.open_fee || 0), 0);
+    const totalCloseFees = fills.reduce((sum, f) => sum + (f.close_fee || 0), 0);
+    const totalNightFees = fills.reduce((sum, f) => sum + (f.night_fee || 0), 0);
+    const totalFees = totalOpenFees + totalCloseFees + totalNightFees;
+    
     let pnl = 0;
     
     if (group.status === 'closed') {
@@ -259,7 +263,13 @@ export const fetchTrades = async (): Promise<Trade[]> => {
       accountId: group.account_id,
       openAt: group.created_at,
       closedAt: group.closed_at,
-      tradeType: tradeType
+      tradeType: tradeType,
+      fees: {
+        open: totalOpenFees,
+        close: totalCloseFees,
+        night: totalNightFees,
+        total: totalFees
+      }
     };
   });
 };
@@ -336,6 +346,17 @@ export const closeTradeInDb = async (tradeId: string, closePrice: number): Promi
     throw groupError;
   }
 
+  // Calculate night fees for the position
+  const openDate = new Date(group.created_at);
+  const closeDate = new Date();
+  const daysHeld = Math.ceil((closeDate.getTime() - openDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Calculate total position value from all fills
+  const totalPositionValue = group.operation_fills.reduce((sum, fill) => sum + (fill.quantity * fill.price), 0);
+  const nightCommissionRate = group.accounts?.night_commission || 7.0;
+  const nightCommissionPerDay = (totalPositionValue * nightCommissionRate) / 100 / 365;
+  const totalNightFees = nightCommissionPerDay * daysHeld;
+
   // Calculate total quantity to close and determine closing side
   const buyFills = group.operation_fills.filter(f => f.side === 'buy');
   const sellFills = group.operation_fills.filter(f => f.side === 'sell');
@@ -364,7 +385,11 @@ export const closeTradeInDb = async (tradeId: string, closePrice: number): Promi
       side: closingSide,
       quantity: quantityToClose,
       price: closePrice,
-      fees: closingFees,
+      fees: closingFees, // Keep for backward compatibility
+      open_fee: 0,
+      close_fee: closingFees,
+      night_fee: totalNightFees,
+      fee_currency: 'USD',
       leverage: 1 // Default leverage for closing
     });
 

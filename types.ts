@@ -23,6 +23,12 @@ export interface Trade {
   closedAt?: string;
   tradeType: TradeType;
   openAt: string;
+  fees?: {
+    open: number;
+    close: number;
+    night: number;
+    total: number;
+  };
 }
 
 export interface Account {

@@ -254,35 +254,28 @@ const PositionDetailsModal: React.FC<{
   const leverage = 5; // Default leverage - in real app this would come from trade data
   const requiredMargin = positionValue / leverage;
   
-  // Commission calculations (using account defaults or fallbacks)
-  const openCloseCommission = account?.openCloseCommission || 0.25;
-  const nightCommission = account?.nightCommission || 7.0;
+  // Use stored fee data from database
+  const openFee = trade.fees?.open || 0;
+  const closeFee = trade.fees?.close || 0;
+  const nightFee = trade.fees?.night || 0;
+  const totalFees = trade.fees?.total || 0;
   
-  const openCommissionAmount = (positionValue * openCloseCommission) / 100;
-  const closeCommissionAmount = (positionValue * openCloseCommission) / 100;
-  
-  // Calculate days held
+  // Calculate days held for display
   const openDate = new Date(trade.openAt);
-  const currentDate = new Date();
-  const daysHeld = Math.ceil((currentDate.getTime() - openDate.getTime()) / (1000 * 60 * 60 * 24));
-  
-  // Night commission calculation (annual rate / 365 * days held)
-  const nightCommissionPerDay = (positionValue * nightCommission) / 100 / 365;
-  const totalNightCommissions = nightCommissionPerDay * daysHeld;
-  
-  const totalCommissions = openCommissionAmount + closeCommissionAmount + totalNightCommissions;
+  const endDate = trade.closedAt ? new Date(trade.closedAt) : new Date();
+  const daysHeld = Math.ceil((endDate.getTime() - openDate.getTime()) / (1000 * 60 * 60 * 24));
   
   // Current P&L (simplified - would need real-time price in production)
   const currentPrice = trade.openPrice * 1.02; // Mock 2% gain for demo
   const grossPnl = trade.tradeType === TradeType.LONG 
     ? (currentPrice - trade.openPrice) * trade.quantity
     : (trade.openPrice - currentPrice) * trade.quantity;
-  const netPnl = grossPnl - totalCommissions;
+  const netPnl = trade.pnl || (grossPnl - totalFees);
   
   // Breakeven price
   const breakevenPrice = trade.tradeType === TradeType.LONG
-    ? trade.openPrice + (totalCommissions / trade.quantity)
-    : trade.openPrice - (totalCommissions / trade.quantity);
+    ? trade.openPrice + (totalFees / trade.quantity)
+    : trade.openPrice - (totalFees / trade.quantity);
 
   return (
     <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50" onClick={onClose}>
@@ -392,23 +385,23 @@ const PositionDetailsModal: React.FC<{
               <h3 className="text-lg font-semibold text-gray-200 mb-4">Commission Breakdown</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Open Commission ({openCloseCommission}%)</span>
-                  <span className="font-bold text-brand-red">${openCommissionAmount.toFixed(2)}</span>
+                  <span className="text-gray-400">Open Commission</span>
+                  <span className="font-bold text-brand-red">${openFee.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Close Commission ({openCloseCommission}%)</span>
-                  <span className="font-bold text-brand-red">${closeCommissionAmount.toFixed(2)}</span>
+                  <span className="text-gray-400">Close Commission</span>
+                  <span className="font-bold text-brand-red">${closeFee.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Night Commission ({nightCommission}% annual)</span>
-                  <span className="font-bold text-brand-red">${totalNightCommissions.toFixed(2)}</span>
+                  <span className="text-gray-400">Night Commission</span>
+                  <span className="font-bold text-brand-red">${nightFee.toFixed(2)}</span>
                 </div>
                 <div className="text-xs text-gray-500">
-                  Night commission: ${nightCommissionPerDay.toFixed(4)}/day × {daysHeld} days
+                  Position held for {daysHeld} days
                 </div>
                 <div className="border-t border-gray-600 pt-2 flex justify-between">
                   <span className="text-gray-200 font-semibold">Total Commissions</span>
-                  <span className="font-bold text-brand-red">${totalCommissions.toFixed(2)}</span>
+                  <span className="font-bold text-brand-red">${totalFees.toFixed(2)}</span>
                 </div>
               </div>
             </div>
