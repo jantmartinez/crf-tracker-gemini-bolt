@@ -365,7 +365,7 @@ const PositionDetailsModal: React.FC<{
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Total Commissions</span>
-                  <span className="font-bold text-brand-red">-${totalCommissions.toFixed(2)}</span>
+                  <span className="font-bold text-brand-red">-${totalFees.toFixed(2)}</span>
                 </div>
                 <div className="border-t border-gray-600 pt-2 flex justify-between">
                   <span className="text-gray-200 font-semibold">Net P&L</span>
