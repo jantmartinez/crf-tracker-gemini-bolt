@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useEffect } from 'react';
-import type { Account } from '../types';
+import type { Account, TradeStatus } from '../types';
 import { fetchUserProfile, updateUserProfile, deleteAccount, updateAccountCommissions } from '../services/databaseService';
 
 interface AccountsProps {
