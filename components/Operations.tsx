@@ -653,8 +653,11 @@ const PositionDetailsModal: React.FC<{
   account: Account | undefined;
   isOpen: boolean;
   onClose: () => void;
-}> = ({ trade, account, isOpen, onClose }) => {
+  onEdit: (trade: Trade) => void;
+}> = ({ trade, account, isOpen, onClose, onEdit }) => {
   const [fills, setFills] = React.useState<any[]>([]);
+  const [editingFillId, setEditingFillId] = React.useState<string | null>(null);
+  const [editFormData, setEditFormData] = React.useState<any>({});
 
   React.useEffect(() => {
     if (isOpen && trade.id) {
@@ -827,7 +830,15 @@ const PositionDetailsModal: React.FC<{
 
         {fills.length > 0 && (
           <div className="mt-8 bg-gray-700 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-200 mb-4">Fill History</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-200">Fill History</h3>
+              <button
+                onClick={() => onEdit(trade)}
+                className="px-4 py-2 rounded-lg bg-gray-600 text-gray-200 hover:bg-gray-500 transition-colors text-sm font-semibold"
+              >
+                Edit Operation
+              </button>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="text-xs text-gray-400 uppercase bg-gray-800/50">
@@ -975,9 +986,6 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                       <button onClick={() => setTradeToView(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-blue-500/20 text-brand-blue hover:bg-blue-500/40">
                         Details
                       </button>
-                      <button onClick={() => setTradeToEdit(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-gray-500/20 text-gray-300 hover:bg-gray-500/40">
-                        Edit
-                      </button>
                     <button onClick={() => setTradeToClose(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-red-500/20 text-brand-red hover:bg-red-500/40">
                       Close
                     </button>
@@ -986,14 +994,9 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                   {showDeleteButton && (
                     <>
                       {trade.status === TradeStatus.CLOSED && (
-                        <>
                           <button onClick={() => setTradeToView(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-blue-500/20 text-brand-blue hover:bg-blue-500/40">
                             Details
                           </button>
-                          <button onClick={() => setTradeToEdit(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-gray-500/20 text-gray-300 hover:bg-gray-500/40">
-                            Edit
-                          </button>
-                        </>
                       )}
                       <button
                         onClick={() => handleDeleteOperation(trade)}
@@ -1066,6 +1069,10 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
           account={getAccount(tradeToView.accountId)}
           isOpen={!!tradeToView}
           onClose={() => setTradeToView(null)}
+          onEdit={(trade) => {
+            setTradeToEdit(trade);
+            setTradeToView(null);
+          }}
         />
       )}
     </>
