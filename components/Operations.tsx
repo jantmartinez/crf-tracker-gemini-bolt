@@ -658,14 +658,54 @@ const PositionDetailsModal: React.FC<{
   const [fills, setFills] = React.useState<any[]>([]);
   const [editingFillId, setEditingFillId] = React.useState<string | null>(null);
   const [editFormData, setEditFormData] = React.useState<any>({});
+  const [isEditMode, setIsEditMode] = React.useState(false);
 
-  React.useEffect(() => {
+  const loadFills = () => {
     if (isOpen && trade.id) {
       import('../services/databaseService').then(({ fetchTradeFills }) => {
         fetchTradeFills(trade.id).then(setFills).catch(console.error);
       });
     }
+  };
+
+  React.useEffect(() => {
+    loadFills();
   }, [isOpen, trade.id]);
+
+  const handleEditFill = (fill: any) => {
+    setEditingFillId(fill.id);
+    setEditFormData({
+      quantity: fill.quantity.toString(),
+      price: fill.price.toString(),
+      open_fee: fill.open_fee.toString(),
+      close_fee: fill.close_fee.toString(),
+      night_fee: fill.night_fee.toString(),
+      fill_timestamp: new Date(fill.fill_timestamp || fill.created_at).toISOString().slice(0, 16)
+    });
+  };
+
+  const handleSaveFill = async (fillId: string) => {
+    try {
+      const { updateTradeFill } = await import('../services/databaseService');
+      await updateTradeFill(fillId, {
+        quantity: parseFloat(editFormData.quantity),
+        price: parseFloat(editFormData.price),
+        open_fee: parseFloat(editFormData.open_fee),
+        close_fee: parseFloat(editFormData.close_fee),
+        night_fee: parseFloat(editFormData.night_fee),
+        fill_timestamp: new Date(editFormData.fill_timestamp).toISOString()
+      });
+      setEditingFillId(null);
+      loadFills();
+    } catch (error) {
+      console.error('Error updating fill:', error);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingFillId(null);
+    setEditFormData({});
+  };
 
   if (!isOpen) return null;
 
@@ -833,10 +873,14 @@ const PositionDetailsModal: React.FC<{
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-200">Fill History</h3>
               <button
-                onClick={() => onEdit(trade)}
-                className="px-4 py-2 rounded-lg bg-gray-600 text-gray-200 hover:bg-gray-500 transition-colors text-sm font-semibold"
+                onClick={() => setIsEditMode(!isEditMode)}
+                className={`px-4 py-2 rounded-lg transition-colors text-sm font-semibold ${
+                  isEditMode
+                    ? 'bg-brand-blue text-white hover:bg-blue-500'
+                    : 'bg-gray-600 text-gray-200 hover:bg-gray-500'
+                }`}
               >
-                Edit Operation
+                {isEditMode ? 'Done Editing' : 'Edit Fills'}
               </button>
             </div>
             <div className="overflow-x-auto">
@@ -851,25 +895,120 @@ const PositionDetailsModal: React.FC<{
                     <th className="p-3 text-right">Close Fee</th>
                     <th className="p-3 text-right">Night Fee</th>
                     <th className="p-3 text-right">Total Fees</th>
+                    {isEditMode && <th className="p-3 text-center">Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {fills.map((fill) => (
                     <tr key={fill.id} className="border-t border-gray-600">
-                      <td className="p-3 text-gray-300">
-                        {new Date(fill.fill_timestamp || fill.created_at).toLocaleString()}
-                      </td>
-                      <td className="p-3">
-                        <span className={`font-semibold uppercase ${fill.side === 'buy' ? 'text-brand-green' : 'text-brand-red'}`}>
-                          {fill.side}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right text-gray-200 font-mono">{fill.quantity}</td>
-                      <td className="p-3 text-right text-gray-200 font-mono">${fill.price.toFixed(2)}</td>
-                      <td className="p-3 text-right text-gray-200 font-mono">${fill.open_fee.toFixed(2)}</td>
-                      <td className="p-3 text-right text-gray-200 font-mono">${fill.close_fee.toFixed(2)}</td>
-                      <td className="p-3 text-right text-gray-200 font-mono">${fill.night_fee.toFixed(2)}</td>
-                      <td className="p-3 text-right text-gray-200 font-mono font-bold">${(fill.open_fee + fill.close_fee + fill.night_fee).toFixed(2)}</td>
+                      {editingFillId === fill.id ? (
+                        <>
+                          <td className="p-3">
+                            <input
+                              type="datetime-local"
+                              value={editFormData.fill_timestamp}
+                              onChange={(e) => setEditFormData({ ...editFormData, fill_timestamp: e.target.value })}
+                              className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200 text-xs"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <span className={`font-semibold uppercase ${fill.side === 'buy' ? 'text-brand-green' : 'text-brand-red'}`}>
+                              {fill.side}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editFormData.quantity}
+                              onChange={(e) => setEditFormData({ ...editFormData, quantity: e.target.value })}
+                              className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200 text-right font-mono text-xs"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editFormData.price}
+                              onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })}
+                              className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200 text-right font-mono text-xs"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editFormData.open_fee}
+                              onChange={(e) => setEditFormData({ ...editFormData, open_fee: e.target.value })}
+                              className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200 text-right font-mono text-xs"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editFormData.close_fee}
+                              onChange={(e) => setEditFormData({ ...editFormData, close_fee: e.target.value })}
+                              className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200 text-right font-mono text-xs"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editFormData.night_fee}
+                              onChange={(e) => setEditFormData({ ...editFormData, night_fee: e.target.value })}
+                              className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200 text-right font-mono text-xs"
+                            />
+                          </td>
+                          <td className="p-3 text-right text-gray-200 font-mono">
+                            ${(parseFloat(editFormData.open_fee || '0') + parseFloat(editFormData.close_fee || '0') + parseFloat(editFormData.night_fee || '0')).toFixed(2)}
+                          </td>
+                          <td className="p-3">
+                            <div className="flex justify-center space-x-1">
+                              <button
+                                onClick={() => handleSaveFill(fill.id)}
+                                className="px-2 py-1 bg-brand-green text-white rounded text-xs hover:bg-green-500"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                className="px-2 py-1 bg-gray-600 text-white rounded text-xs hover:bg-gray-500"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="p-3 text-gray-300">
+                            {new Date(fill.fill_timestamp || fill.created_at).toLocaleString()}
+                          </td>
+                          <td className="p-3">
+                            <span className={`font-semibold uppercase ${fill.side === 'buy' ? 'text-brand-green' : 'text-brand-red'}`}>
+                              {fill.side}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right text-gray-200 font-mono">{fill.quantity}</td>
+                          <td className="p-3 text-right text-gray-200 font-mono">${fill.price.toFixed(2)}</td>
+                          <td className="p-3 text-right text-gray-200 font-mono">${fill.open_fee.toFixed(2)}</td>
+                          <td className="p-3 text-right text-gray-200 font-mono">${fill.close_fee.toFixed(2)}</td>
+                          <td className="p-3 text-right text-gray-200 font-mono">${fill.night_fee.toFixed(2)}</td>
+                          <td className="p-3 text-right text-gray-200 font-mono font-bold">${(fill.open_fee + fill.close_fee + fill.night_fee).toFixed(2)}</td>
+                          {isEditMode && (
+                            <td className="p-3 text-center">
+                              <button
+                                onClick={() => handleEditFill(fill)}
+                                className="px-3 py-1 bg-brand-blue text-white rounded text-xs hover:bg-blue-500"
+                              >
+                                Edit
+                              </button>
+                            </td>
+                          )}
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>

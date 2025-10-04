@@ -614,6 +614,28 @@ export const fetchTradeFills = async (tradeId: string): Promise<TradeFill[]> => 
   return data || [];
 };
 
+export const updateTradeFill = async (
+  fillId: string,
+  updates: {
+    quantity?: number;
+    price?: number;
+    open_fee?: number;
+    close_fee?: number;
+    night_fee?: number;
+    fill_timestamp?: string;
+  }
+): Promise<void> => {
+  const { error } = await supabase
+    .from('operation_fills')
+    .update(updates)
+    .eq('id', fillId);
+
+  if (error) {
+    console.error('Error updating fill:', error);
+    throw error;
+  }
+};
+
 export const deleteOperation = async (operationId: string): Promise<void> => {
   // First delete all operation fills for this group
   const { error: fillsError } = await supabase
