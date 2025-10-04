@@ -201,14 +201,22 @@ export const calculateTimeBasedMetrics = (trades: Trade[]): TimeBasedMetrics => 
 };
 
 export const getMonthlyPnlData = (trades: Trade[]) => {
-  const closedTrades = trades.filter(t => t.status === TradeStatus.CLOSED && t.closedAt);
+  if (trades.length === 0) return [];
 
-  if (closedTrades.length === 0) return [];
+  // Find the first and last trade dates using openAt and closedAt
+  const allDates: Date[] = [];
 
-  // Find the first and last trade dates
-  const tradeDates = closedTrades.map(t => new Date(t.closedAt!));
-  const firstTradeDate = new Date(Math.min(...tradeDates.map(d => d.getTime())));
-  const lastTradeDate = new Date(Math.max(...tradeDates.map(d => d.getTime())));
+  trades.forEach(trade => {
+    allDates.push(new Date(trade.openAt));
+    if (trade.closedAt) {
+      allDates.push(new Date(trade.closedAt));
+    }
+  });
+
+  if (allDates.length === 0) return [];
+
+  const firstTradeDate = new Date(Math.min(...allDates.map(d => d.getTime())));
+  const lastTradeDate = new Date(Math.max(...allDates.map(d => d.getTime())));
 
   // Initialize all months from first to last trade
   const monthlyMap = new Map<string, { month: string; pnl: number; tradeCount: number; winCount: number; sortKey: string }>();
@@ -232,7 +240,9 @@ export const getMonthlyPnlData = (trades: Trade[]) => {
     currentDate.setMonth(currentDate.getMonth() + 1);
   }
 
-  // Populate with actual trade data
+  // Populate with actual trade data (only closed trades have P&L)
+  const closedTrades = trades.filter(t => t.status === TradeStatus.CLOSED && t.closedAt);
+
   closedTrades.forEach(trade => {
     const date = new Date(trade.closedAt!);
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
