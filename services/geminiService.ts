@@ -2,13 +2,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { StockAnalysis } from '../types';
 
-const API_KEY = process.env.API_KEY;
+const API_KEY = import.meta.env.VITE_API_KEY;
 
 if (!API_KEY) {
-  console.warn("API_KEY environment variable not set. Gemini API calls will fail.");
+  console.warn("VITE_API_KEY environment variable not set. Gemini API calls will fail.");
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY! });
+const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
 
 const stockAnalysisSchema = {
   type: Type.OBJECT,
@@ -64,10 +64,10 @@ const stockAnalysisSchema = {
 };
 
 export const fetchStockAnalysis = async (ticker: string): Promise<StockAnalysis> => {
-  if (!API_KEY) {
+  if (!API_KEY || !ai) {
     throw new Error("Gemini API key is not configured.");
   }
-  
+
   try {
     const prompt = `Generate a real stock analysis for the ticker symbol: ${ticker.toUpperCase()}. The company should be plausible for the given ticker. Provide a comprehensive analysis including company info, analyst consensus, technical indicators, and recent news articles. Format the entire response as a single JSON object conforming to the provided schema. Ensure the news timestamps are recent and realistic.`;
 
