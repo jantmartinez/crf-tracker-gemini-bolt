@@ -10,7 +10,7 @@ import Analytics from './components/Analytics';
 import type { Page, Account, Trade, WatchlistItem } from './types';
 import { MOCK_WATCHLIST } from './constants';
 import { TradeStatus, TradeType } from './types';
-import { fetchAccounts, createAccount, deleteAccount, fetchTrades, createTrade, closeTradeInDb, fetchWatchlist, debugFetchProfiles } from './services/databaseService';
+import { fetchAccounts, createAccount, deleteAccount, fetchTrades, createTrade, closeTradeInDb, fetchWatchlist, debugFetchProfiles, updateTrade } from './services/databaseService';
 import { deleteOperation, partialCloseTradeInDb } from './services/databaseService';
 
 
@@ -128,6 +128,20 @@ const App: React.FC = () => {
       });
   }, []);
 
+  const handleUpdateTrade = useCallback((tradeId: string, updates: Partial<Trade>) => {
+    updateTrade(tradeId, updates)
+      .then(() => {
+        return fetchTrades();
+      })
+      .then(updatedTrades => {
+        setTrades(updatedTrades);
+      })
+      .catch(err => {
+        console.error('Error updating trade:', err);
+        setError('Failed to update trade');
+      });
+  }, []);
+
   const updateAccount = useCallback((accountId: string, updates: Partial<Account>) => {
     setAccounts(prev => prev.map(account => 
       account.id === accountId ? { ...account, ...updates } : account
@@ -172,7 +186,7 @@ const App: React.FC = () => {
       case 'intelligence':
         return <Intelligence watchlist={watchlist} addToWatchlist={addToWatchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} accounts={accounts} />;
       case 'operations':
-        return <Operations trades={trades} accounts={accounts} addTrade={addTrade} closeTrade={handleCloseTrade} deleteTrade={deleteTrade} />;
+        return <Operations trades={trades} accounts={accounts} addTrade={addTrade} closeTrade={handleCloseTrade} deleteTrade={deleteTrade} updateTrade={handleUpdateTrade} />;
       case 'accounts':
         return <Accounts accounts={accounts} addAccount={addAccount} removeAccount={removeAccount} updateAccount={updateAccount} trades={trades} />;
       case 'analytics':

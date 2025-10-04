@@ -394,6 +394,142 @@ export const CloseOperationModal: React.FC<CloseOperationModalProps> = ({ trade,
     );
 };
 
+interface EditOperationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onUpdate: (tradeId: string, updates: Partial<Trade>) => void;
+  trade: Trade;
+  accounts: Account[];
+}
+
+const EditOperationModal: React.FC<EditOperationModalProps> = ({ isOpen, onClose, onUpdate, trade, accounts }) => {
+  const [symbol, setSymbol] = useState(trade.symbol);
+  const [tradeType, setTradeType] = useState<TradeType>(trade.tradeType);
+  const [quantity, setQuantity] = useState(trade.quantity.toString());
+  const [openPrice, setOpenPrice] = useState(trade.openPrice.toString());
+  const [closePrice, setClosePrice] = useState(trade.closePrice?.toString() || '');
+  const [accountId, setAccountId] = useState(trade.accountId);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const updates: Partial<Trade> = {
+      symbol: symbol.toUpperCase(),
+      tradeType,
+      quantity: parseFloat(quantity),
+      openPrice: parseFloat(openPrice),
+      accountId,
+    };
+
+    if (trade.status === TradeStatus.CLOSED && closePrice) {
+      updates.closePrice = parseFloat(closePrice);
+    }
+
+    onUpdate(trade.id, updates);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-2xl font-bold mb-6 text-gray-200">Edit Operation</h2>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="edit-symbol" className="block text-sm font-medium text-gray-400 mb-1">Symbol</label>
+              <input
+                id="edit-symbol"
+                type="text"
+                value={symbol}
+                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="edit-tradeType" className="block text-sm font-medium text-gray-400 mb-1">Position Type</label>
+              <select
+                id="edit-tradeType"
+                value={tradeType}
+                onChange={(e) => setTradeType(e.target.value as TradeType)}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+              >
+                <option value={TradeType.LONG}>Long (Buy)</option>
+                <option value={TradeType.SHORT}>Short (Sell)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="edit-quantity" className="block text-sm font-medium text-gray-400 mb-1">Quantity</label>
+              <input
+                id="edit-quantity"
+                type="number"
+                step="any"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="edit-openPrice" className="block text-sm font-medium text-gray-400 mb-1">Open Price</label>
+              <input
+                id="edit-openPrice"
+                type="number"
+                step="any"
+                value={openPrice}
+                onChange={(e) => setOpenPrice(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                required
+              />
+            </div>
+          </div>
+
+          {trade.status === TradeStatus.CLOSED && (
+            <div>
+              <label htmlFor="edit-closePrice" className="block text-sm font-medium text-gray-400 mb-1">Close Price</label>
+              <input
+                id="edit-closePrice"
+                type="number"
+                step="any"
+                value={closePrice}
+                onChange={(e) => setClosePrice(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+              />
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="edit-account" className="block text-sm font-medium text-gray-400 mb-1">Account</label>
+            <select
+              id="edit-account"
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+              required
+            >
+              {accounts.map(account => (
+                <option key={account.id} value={account.id}>{account.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex justify-end space-x-4 pt-4">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-700">Cancel</button>
+            <button type="submit" className="px-6 py-2 rounded-lg bg-brand-blue text-white font-bold hover:bg-blue-500">
+              Update Operation
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const PositionDetailsModal: React.FC<{
   trade: Trade;
   account: Account | undefined;
@@ -581,6 +717,7 @@ interface OperationsProps {
   addTrade: (tradeData: Omit<Trade, 'id' | 'status' | 'openAt' | 'pnl'>) => void;
   closeTrade: (tradeId: string, closePrice: number, closePercentage?: number) => void;
   deleteTrade: (tradeId: string) => void;
+  updateTrade: (tradeId: string, updates: Partial<Trade>) => void;
 }
 
 const DeleteOperationModal: React.FC<{
@@ -606,11 +743,12 @@ const DeleteOperationModal: React.FC<{
     </div>
   );
 };
-const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, closeTrade, deleteTrade }) => {
+const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, closeTrade, deleteTrade, updateTrade }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [tradeToClose, setTradeToClose] = useState<Trade | null>(null);
   const [tradeToDelete, setTradeToDelete] = useState<Trade | null>(null);
   const [tradeToView, setTradeToView] = useState<Trade | null>(null);
+  const [tradeToEdit, setTradeToEdit] = useState<Trade | null>(null);
 
   const openTrades = trades.filter(t => t.status === TradeStatus.OPEN);
   const closedTrades = [...trades.filter(t => t.status === TradeStatus.CLOSED)].sort((a, b) => new Date(b.closedAt!).getTime() - new Date(a.closedAt!).getTime());
@@ -662,6 +800,9 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                       <button onClick={() => setTradeToView(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-blue-500/20 text-brand-blue hover:bg-blue-500/40">
                         Details
                       </button>
+                      <button onClick={() => setTradeToEdit(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-gray-500/20 text-gray-300 hover:bg-gray-500/40">
+                        Edit
+                      </button>
                     <button onClick={() => setTradeToClose(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-red-500/20 text-brand-red hover:bg-red-500/40">
                       Close
                     </button>
@@ -670,13 +811,18 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                   {showDeleteButton && (
                     <>
                       {trade.status === TradeStatus.CLOSED && (
-                        <button onClick={() => setTradeToView(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-blue-500/20 text-brand-blue hover:bg-blue-500/40">
-                          Details
-                        </button>
+                        <>
+                          <button onClick={() => setTradeToView(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-blue-500/20 text-brand-blue hover:bg-blue-500/40">
+                            Details
+                          </button>
+                          <button onClick={() => setTradeToEdit(trade)} className="font-semibold py-1 px-3 rounded-lg transition-colors text-xs bg-gray-500/20 text-gray-300 hover:bg-gray-500/40">
+                            Edit
+                          </button>
+                        </>
                       )}
-                      <button 
-                        onClick={() => handleDeleteOperation(trade)} 
-                        className="text-gray-400 hover:text-brand-red transition-colors p-1" 
+                      <button
+                        onClick={() => handleDeleteOperation(trade)}
+                        className="text-gray-400 hover:text-brand-red transition-colors p-1"
                         title="Delete operation"
                       >
                         <i className="ri-delete-bin-line text-base"></i>
@@ -728,6 +874,15 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
           onClose={() => setTradeToDelete(null)}
           onConfirm={confirmDeleteOperation}
           trade={tradeToDelete}
+        />
+      )}
+      {tradeToEdit && (
+        <EditOperationModal
+          isOpen={!!tradeToEdit}
+          onClose={() => setTradeToEdit(null)}
+          onUpdate={updateTrade}
+          trade={tradeToEdit}
+          accounts={accounts}
         />
       )}
       {tradeToView && (

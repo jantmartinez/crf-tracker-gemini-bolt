@@ -344,6 +344,90 @@ export const createTrade = async (tradeData: Omit<Trade, 'id' | 'status' | 'open
 export const closeTrade = async (tradeId: string, closePrice: number): Promise<void> => {
 }
 
+export const updateTrade = async (tradeId: string, updates: Partial<Trade>): Promise<void> => {
+  const { data: group, error: fetchError } = await supabase
+    .from('operation_groups')
+    .select(`
+      *,
+      operation_fills (*)
+    `)
+    .eq('id', tradeId)
+    .single();
+
+  if (fetchError) {
+    console.error('Error fetching operation group:', fetchError);
+    throw fetchError;
+  }
+
+  const groupUpdates: any = {};
+
+  if (updates.symbol !== undefined) {
+    groupUpdates.symbol = updates.symbol;
+  }
+
+  if (updates.accountId !== undefined) {
+    groupUpdates.account_id = updates.accountId;
+  }
+
+  if (Object.keys(groupUpdates).length > 0) {
+    const { error: updateGroupError } = await supabase
+      .from('operation_groups')
+      .update(groupUpdates)
+      .eq('id', tradeId);
+
+    if (updateGroupError) {
+      console.error('Error updating operation group:', updateGroupError);
+      throw updateGroupError;
+    }
+  }
+
+  const fills = group.operation_fills;
+
+  if (fills && fills.length > 0) {
+    const openFill = fills.find(f => f.fill_type === 'open');
+
+    if (openFill && (updates.quantity !== undefined || updates.openPrice !== undefined || updates.tradeType !== undefined)) {
+      const fillUpdates: any = {};
+
+      if (updates.quantity !== undefined) {
+        fillUpdates.quantity = updates.quantity;
+      }
+
+      if (updates.openPrice !== undefined) {
+        fillUpdates.price = updates.openPrice;
+      }
+
+      if (updates.tradeType !== undefined) {
+        fillUpdates.side = updates.tradeType === 'long' ? 'buy' : 'sell';
+      }
+
+      const { error: updateFillError } = await supabase
+        .from('operation_fills')
+        .update(fillUpdates)
+        .eq('id', openFill.id);
+
+      if (updateFillError) {
+        console.error('Error updating operation fill:', updateFillError);
+        throw updateFillError;
+      }
+    }
+
+    const closeFill = fills.find(f => f.fill_type === 'close');
+
+    if (closeFill && updates.closePrice !== undefined) {
+      const { error: updateCloseFillError } = await supabase
+        .from('operation_fills')
+        .update({ price: updates.closePrice })
+        .eq('id', closeFill.id);
+
+      if (updateCloseFillError) {
+        console.error('Error updating close fill:', updateCloseFillError);
+        throw updateCloseFillError;
+      }
+    }
+  }
+};
+
 export const closeTradeInDb = async (tradeId: string, closePrice: number): Promise<void> => {
   await partialCloseTradeInDb(tradeId, closePrice, 100); // Close 100% of position
 };
