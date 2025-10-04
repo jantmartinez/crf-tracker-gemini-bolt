@@ -90,25 +90,51 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
   // Generate monthly equity and trade count data
   const generateMonthlyData = () => {
     const monthlyData = new Map();
-    
-    // Find the earliest account creation date
-    const earliestAccountDate = accounts.length > 0 
-      ? new Date(Math.min(...accounts.map(acc => new Date(acc.createdAt).getTime())))
-      : new Date();
-    
-    const currentDate = new Date();
-    const startDate = new Date(earliestAccountDate.getFullYear(), earliestAccountDate.getMonth(), 1);
-    
-    // Calculate months from earliest account to current month
-    const monthsDiff = (currentDate.getFullYear() - startDate.getFullYear()) * 12 + 
-                      (currentDate.getMonth() - startDate.getMonth()) + 1;
-    
-    // Initialize all months from earliest account creation to current month
+
+    // If no trades, show starting balance for account creation month
+    if (closedTrades.length === 0 && openTrades.length === 0) {
+      const earliestAccountDate = accounts.length > 0
+        ? new Date(Math.min(...accounts.map(acc => new Date(acc.createdAt).getTime())))
+        : new Date();
+
+      const monthKey = earliestAccountDate.toISOString().slice(0, 7);
+      const monthName = earliestAccountDate.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+
+      monthlyData.set(monthKey, {
+        month: monthName,
+        equity: startingBalance,
+        winRate: 0,
+        realizedPnl: 0
+      });
+
+      return Array.from(monthlyData.values());
+    }
+
+    // Find the earliest and latest trade dates
+    const allTradeDates: Date[] = [];
+    [...closedTrades, ...openTrades].forEach(trade => {
+      allTradeDates.push(new Date(trade.openAt));
+      if (trade.closedAt) {
+        allTradeDates.push(new Date(trade.closedAt));
+      }
+    });
+
+    const earliestTradeDate = new Date(Math.min(...allTradeDates.map(d => d.getTime())));
+    const latestTradeDate = new Date(Math.max(...allTradeDates.map(d => d.getTime())));
+
+    const startDate = new Date(earliestTradeDate.getFullYear(), earliestTradeDate.getMonth(), 1);
+    const endDate = new Date(latestTradeDate.getFullYear(), latestTradeDate.getMonth(), 1);
+
+    // Calculate months from earliest trade to latest trade
+    const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+                      (endDate.getMonth() - startDate.getMonth()) + 1;
+
+    // Initialize all months from earliest trade to latest trade
     for (let i = 0; i < monthsDiff; i++) {
       const date = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
       const monthKey = date.toISOString().slice(0, 7); // YYYY-MM format
       const monthName = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-      
+
       monthlyData.set(monthKey, {
         month: monthName,
         equity: startingBalance,
@@ -154,9 +180,9 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
       }
     });
 
-    // Add unrealized P&L to current month
+    // Add unrealized P&L to the last month with trades
     const monthlyArray = Array.from(monthlyData.values());
-    if (monthlyArray.length > 0) {
+    if (monthlyArray.length > 0 && openTrades.length > 0) {
       monthlyArray[monthlyArray.length - 1].equity += unrealizedPnl;
     }
 
