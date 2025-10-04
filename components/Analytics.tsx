@@ -138,9 +138,10 @@ const CalendarTab: React.FC<CalendarTabProps> = ({
   monthlyTotalTrades,
   monthlyWinRate,
 }) => {
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  const emptyDays = Array(firstDayOfMonth).fill(null);
+  const adjustedFirstDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
+  const emptyDays = Array(adjustedFirstDay).fill(null);
   const allDays = [...emptyDays, ...calendarData.days];
 
   const calculateWeeklyTotals = () => {
@@ -212,12 +213,12 @@ const CalendarTab: React.FC<CalendarTabProps> = ({
                 {weekDays.map((dayData, dayIndex) => {
                   const index = weekStart + dayIndex;
 
-                  if (dayData === null && index < firstDayOfMonth) {
+                  if (dayData === null && index < adjustedFirstDay) {
                     return <div key={`empty-${index}`} className="aspect-square" />;
                   }
 
                   if (dayData === null) {
-                    const dayNumber = index - firstDayOfMonth + 1;
+                    const dayNumber = index - adjustedFirstDay + 1;
                     return (
                       <div
                         key={`day-${dayNumber}`}
@@ -228,7 +229,7 @@ const CalendarTab: React.FC<CalendarTabProps> = ({
                     );
                   }
 
-                  const dayNumber = index - firstDayOfMonth + 1;
+                  const dayNumber = index - adjustedFirstDay + 1;
                   const isProfit = dayData.pnl > 0;
                   const bgColor = isProfit ? 'bg-green-500/20 border-green-500/50' : 'bg-red-500/20 border-red-500/50';
 
