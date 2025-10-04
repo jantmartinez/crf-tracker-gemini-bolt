@@ -415,10 +415,34 @@ const EditOperationModal: React.FC<EditOperationModalProps> = ({ isOpen, onClose
   const [closeFee, setCloseFee] = useState(trade.fees?.close?.toString() || '0');
   const [nightFee, setNightFee] = useState(trade.fees?.night?.toString() || '0');
 
+  React.useEffect(() => {
+    if (trade.status === TradeStatus.CLOSED && openDate && closeDate) {
+      const open = new Date(openDate);
+      const close = new Date(closeDate);
+      const isSameDay = open.toDateString() === close.toDateString();
+
+      if (isSameDay) {
+        setNightFee('0');
+      }
+    }
+  }, [openDate, closeDate, trade.status]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    let calculatedNightFee = parseFloat(nightFee);
+
+    if (trade.status === TradeStatus.CLOSED && openDate && closeDate) {
+      const open = new Date(openDate);
+      const close = new Date(closeDate);
+      const isSameDay = open.toDateString() === close.toDateString();
+
+      if (isSameDay) {
+        calculatedNightFee = 0;
+      }
+    }
 
     const updates: Partial<Trade> = {
       symbol: symbol.toUpperCase(),
@@ -430,8 +454,8 @@ const EditOperationModal: React.FC<EditOperationModalProps> = ({ isOpen, onClose
       fees: {
         open: parseFloat(openFee),
         close: parseFloat(closeFee),
-        night: parseFloat(nightFee),
-        total: parseFloat(openFee) + parseFloat(closeFee) + parseFloat(nightFee),
+        night: calculatedNightFee,
+        total: parseFloat(openFee) + parseFloat(closeFee) + calculatedNightFee,
       },
     };
 
@@ -578,10 +602,23 @@ const EditOperationModal: React.FC<EditOperationModalProps> = ({ isOpen, onClose
                   value={nightFee}
                   onChange={(e) => setNightFee(e.target.value)}
                   className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                  disabled={trade.status === TradeStatus.CLOSED && openDate && closeDate && new Date(openDate).toDateString() === new Date(closeDate).toDateString()}
                 />
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">Total Fees: ${(parseFloat(openFee || '0') + parseFloat(closeFee || '0') + parseFloat(nightFee || '0')).toFixed(2)}</p>
+            <p className="text-xs text-gray-500 mt-2">
+              Total Fees: ${(() => {
+                let calculatedNightFee = parseFloat(nightFee || '0');
+                if (trade.status === TradeStatus.CLOSED && openDate && closeDate) {
+                  const isSameDay = new Date(openDate).toDateString() === new Date(closeDate).toDateString();
+                  if (isSameDay) calculatedNightFee = 0;
+                }
+                return (parseFloat(openFee || '0') + parseFloat(closeFee || '0') + calculatedNightFee).toFixed(2);
+              })()}
+              {trade.status === TradeStatus.CLOSED && openDate && closeDate && new Date(openDate).toDateString() === new Date(closeDate).toDateString() && (
+                <span className="text-yellow-400 ml-2">(Same-day trade: no night fee)</span>
+              )}
+            </p>
           </div>
 
           <div>
