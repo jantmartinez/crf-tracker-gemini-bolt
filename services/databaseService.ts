@@ -386,7 +386,7 @@ export const updateTrade = async (tradeId: string, updates: Partial<Trade>): Pro
   if (fills && fills.length > 0) {
     const openFill = fills.find(f => f.fill_type === 'open');
 
-    if (openFill && (updates.quantity !== undefined || updates.openPrice !== undefined || updates.tradeType !== undefined)) {
+    if (openFill && (updates.quantity !== undefined || updates.openPrice !== undefined || updates.tradeType !== undefined || updates.openAt !== undefined || updates.fees !== undefined)) {
       const fillUpdates: any = {};
 
       if (updates.quantity !== undefined) {
@@ -399,6 +399,14 @@ export const updateTrade = async (tradeId: string, updates: Partial<Trade>): Pro
 
       if (updates.tradeType !== undefined) {
         fillUpdates.side = updates.tradeType === 'long' ? 'buy' : 'sell';
+      }
+
+      if (updates.openAt !== undefined) {
+        fillUpdates.executed_at = new Date(updates.openAt).toISOString();
+      }
+
+      if (updates.fees !== undefined) {
+        fillUpdates.commission = updates.fees.open;
       }
 
       const { error: updateFillError } = await supabase
@@ -414,16 +422,42 @@ export const updateTrade = async (tradeId: string, updates: Partial<Trade>): Pro
 
     const closeFill = fills.find(f => f.fill_type === 'close');
 
-    if (closeFill && updates.closePrice !== undefined) {
+    if (closeFill && (updates.closePrice !== undefined || updates.closedAt !== undefined || updates.fees !== undefined)) {
+      const closeFillUpdates: any = {};
+
+      if (updates.closePrice !== undefined) {
+        closeFillUpdates.price = updates.closePrice;
+      }
+
+      if (updates.closedAt !== undefined) {
+        closeFillUpdates.executed_at = new Date(updates.closedAt).toISOString();
+      }
+
+      if (updates.fees !== undefined) {
+        closeFillUpdates.commission = updates.fees.close;
+      }
+
       const { error: updateCloseFillError } = await supabase
         .from('operation_fills')
-        .update({ price: updates.closePrice })
+        .update(closeFillUpdates)
         .eq('id', closeFill.id);
 
       if (updateCloseFillError) {
         console.error('Error updating close fill:', updateCloseFillError);
         throw updateCloseFillError;
       }
+    }
+  }
+
+  if (updates.fees !== undefined && updates.fees.night !== undefined) {
+    const { error: updateGroupFeesError } = await supabase
+      .from('operation_groups')
+      .update({ night_fees: updates.fees.night })
+      .eq('id', tradeId);
+
+    if (updateGroupFeesError) {
+      console.error('Error updating night fees:', updateGroupFeesError);
+      throw updateGroupFeesError;
     }
   }
 };

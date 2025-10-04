@@ -409,6 +409,11 @@ const EditOperationModal: React.FC<EditOperationModalProps> = ({ isOpen, onClose
   const [openPrice, setOpenPrice] = useState(trade.openPrice.toString());
   const [closePrice, setClosePrice] = useState(trade.closePrice?.toString() || '');
   const [accountId, setAccountId] = useState(trade.accountId);
+  const [openDate, setOpenDate] = useState(trade.openAt.split('T')[0]);
+  const [closeDate, setCloseDate] = useState(trade.closedAt ? trade.closedAt.split('T')[0] : '');
+  const [openFee, setOpenFee] = useState(trade.fees?.open?.toString() || '0');
+  const [closeFee, setCloseFee] = useState(trade.fees?.close?.toString() || '0');
+  const [nightFee, setNightFee] = useState(trade.fees?.night?.toString() || '0');
 
   if (!isOpen) return null;
 
@@ -421,10 +426,20 @@ const EditOperationModal: React.FC<EditOperationModalProps> = ({ isOpen, onClose
       quantity: parseFloat(quantity),
       openPrice: parseFloat(openPrice),
       accountId,
+      openAt: openDate,
+      fees: {
+        open: parseFloat(openFee),
+        close: parseFloat(closeFee),
+        night: parseFloat(nightFee),
+        total: parseFloat(openFee) + parseFloat(closeFee) + parseFloat(nightFee),
+      },
     };
 
     if (trade.status === TradeStatus.CLOSED && closePrice) {
       updates.closePrice = parseFloat(closePrice);
+      if (closeDate) {
+        updates.closedAt = closeDate;
+      }
     }
 
     onUpdate(trade.id, updates);
@@ -489,6 +504,32 @@ const EditOperationModal: React.FC<EditOperationModalProps> = ({ isOpen, onClose
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="edit-openDate" className="block text-sm font-medium text-gray-400 mb-1">Open Date</label>
+              <input
+                id="edit-openDate"
+                type="date"
+                value={openDate}
+                onChange={(e) => setOpenDate(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                required
+              />
+            </div>
+            {trade.status === TradeStatus.CLOSED && (
+              <div>
+                <label htmlFor="edit-closeDate" className="block text-sm font-medium text-gray-400 mb-1">Close Date</label>
+                <input
+                  id="edit-closeDate"
+                  type="date"
+                  value={closeDate}
+                  onChange={(e) => setCloseDate(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                />
+              </div>
+            )}
+          </div>
+
           {trade.status === TradeStatus.CLOSED && (
             <div>
               <label htmlFor="edit-closePrice" className="block text-sm font-medium text-gray-400 mb-1">Close Price</label>
@@ -502,6 +543,46 @@ const EditOperationModal: React.FC<EditOperationModalProps> = ({ isOpen, onClose
               />
             </div>
           )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">Commission & Fees</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="edit-openFee" className="block text-xs text-gray-500 mb-1">Open Fee ($)</label>
+                <input
+                  id="edit-openFee"
+                  type="number"
+                  step="any"
+                  value={openFee}
+                  onChange={(e) => setOpenFee(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                />
+              </div>
+              <div>
+                <label htmlFor="edit-closeFee" className="block text-xs text-gray-500 mb-1">Close Fee ($)</label>
+                <input
+                  id="edit-closeFee"
+                  type="number"
+                  step="any"
+                  value={closeFee}
+                  onChange={(e) => setCloseFee(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                />
+              </div>
+              <div>
+                <label htmlFor="edit-nightFee" className="block text-xs text-gray-500 mb-1">Night Fee ($)</label>
+                <input
+                  id="edit-nightFee"
+                  type="number"
+                  step="any"
+                  value={nightFee}
+                  onChange={(e) => setNightFee(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Total Fees: ${(parseFloat(openFee || '0') + parseFloat(closeFee || '0') + parseFloat(nightFee || '0')).toFixed(2)}</p>
+          </div>
 
           <div>
             <label htmlFor="edit-account" className="block text-sm font-medium text-gray-400 mb-1">Account</label>
