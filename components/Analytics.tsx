@@ -143,6 +143,21 @@ const CalendarTab: React.FC<CalendarTabProps> = ({
   const emptyDays = Array(firstDayOfMonth).fill(null);
   const allDays = [...emptyDays, ...calendarData.days];
 
+  const calculateWeeklyTotals = () => {
+    const weeks: { pnl: number; tradeCount: number }[] = [];
+
+    for (let i = 0; i < allDays.length; i += 7) {
+      const weekDays = allDays.slice(i, i + 7);
+      const weekPnl = weekDays.reduce((sum, day) => sum + (day?.pnl ?? 0), 0);
+      const weekTradeCount = weekDays.reduce((sum, day) => sum + (day?.tradeCount ?? 0), 0);
+      weeks.push({ pnl: weekPnl, tradeCount: weekTradeCount });
+    }
+
+    return weeks;
+  };
+
+  const weeklyTotals = calculateWeeklyTotals();
+
   return (
     <div className="space-y-6">
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
@@ -155,7 +170,15 @@ const CalendarTab: React.FC<CalendarTabProps> = ({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h2 className="text-2xl font-bold text-gray-200">{monthName}</h2>
+          <div className="flex items-center gap-8">
+            <h2 className="text-2xl font-bold text-gray-200">{monthName}</h2>
+            <div className="bg-gray-700/50 px-4 py-2 rounded-lg border border-gray-600">
+              <p className="text-xs text-gray-400 uppercase mb-1">Monthly Total</p>
+              <p className={`text-xl font-bold ${monthlyTotalPnl >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>
+                ${monthlyTotalPnl.toFixed(2)}
+              </p>
+            </div>
+          </div>
           <button
             onClick={nextMonth}
             className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
@@ -166,66 +189,94 @@ const CalendarTab: React.FC<CalendarTabProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-2 mb-2">
+        <div className="grid grid-cols-8 gap-2 mb-2">
           {weekDays.map(day => (
             <div key={day} className="text-center text-gray-400 font-semibold text-sm py-2">
               {day}
             </div>
           ))}
+          <div className="text-center text-gray-400 font-semibold text-sm py-2">
+            Week
+          </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-2">
-          {allDays.map((dayData, index) => {
-            if (dayData === null && index < firstDayOfMonth) {
-              return <div key={`empty-${index}`} className="aspect-square" />;
-            }
-
-            if (dayData === null) {
-              const dayNumber = index - firstDayOfMonth + 1;
-              return (
-                <div
-                  key={`day-${dayNumber}`}
-                  className="aspect-square bg-gray-700/30 rounded-lg p-2 flex flex-col"
-                >
-                  <span className="text-gray-500 text-sm font-medium">{dayNumber}</span>
-                </div>
-              );
-            }
-
-            const dayNumber = index - firstDayOfMonth + 1;
-            const isProfit = dayData.pnl > 0;
-            const bgColor = isProfit ? 'bg-green-500/20 border-green-500/50' : 'bg-red-500/20 border-red-500/50';
+        <div className="space-y-2">
+          {weeklyTotals.map((weekTotal, weekIndex) => {
+            const weekStart = weekIndex * 7;
+            const weekEnd = weekStart + 7;
+            const weekDays = allDays.slice(weekStart, weekEnd);
+            const isWeekProfit = weekTotal.pnl >= 0;
 
             return (
-              <div
-                key={`day-${dayNumber}`}
-                className={`aspect-square ${bgColor} border rounded-lg p-2 flex flex-col hover:shadow-lg transition-shadow cursor-pointer group relative`}
-                title={`${dayData.tradeCount} trades | Win Rate: ${dayData.winRate.toFixed(1)}% | P&L: $${dayData.pnl.toFixed(2)}`}
-              >
-                <span className="text-gray-200 text-sm font-medium">{dayNumber}</span>
-                <div className="flex-1 flex flex-col justify-center">
-                  <p className={`text-xs font-bold ${isProfit ? 'text-brand-green' : 'text-brand-red'}`}>
-                    ${dayData.pnl.toFixed(0)}
-                  </p>
-                  <p className="text-xs text-gray-400">{dayData.tradeCount} trades</p>
-                </div>
+              <div key={`week-${weekIndex}`} className="grid grid-cols-8 gap-2">
+                {weekDays.map((dayData, dayIndex) => {
+                  const index = weekStart + dayIndex;
 
-                <div className="absolute top-full left-0 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg p-3 shadow-xl z-10 hidden group-hover:block">
-                  <p className="text-xs text-gray-400 mb-1">
-                    Trades: <span className="text-gray-200 font-semibold">{dayData.tradeCount}</span>
+                  if (dayData === null && index < firstDayOfMonth) {
+                    return <div key={`empty-${index}`} className="aspect-square" />;
+                  }
+
+                  if (dayData === null) {
+                    const dayNumber = index - firstDayOfMonth + 1;
+                    return (
+                      <div
+                        key={`day-${dayNumber}`}
+                        className="aspect-square bg-gray-700/30 rounded-lg p-2 flex flex-col"
+                      >
+                        <span className="text-gray-500 text-sm font-medium">{dayNumber}</span>
+                      </div>
+                    );
+                  }
+
+                  const dayNumber = index - firstDayOfMonth + 1;
+                  const isProfit = dayData.pnl > 0;
+                  const bgColor = isProfit ? 'bg-green-500/20 border-green-500/50' : 'bg-red-500/20 border-red-500/50';
+
+                  return (
+                    <div
+                      key={`day-${dayNumber}`}
+                      className={`aspect-square ${bgColor} border rounded-lg p-2 flex flex-col hover:shadow-lg transition-shadow cursor-pointer group relative`}
+                      title={`${dayData.tradeCount} trades | Win Rate: ${dayData.winRate.toFixed(1)}% | P&L: $${dayData.pnl.toFixed(2)}`}
+                    >
+                      <span className="text-gray-200 text-sm font-medium">{dayNumber}</span>
+                      <div className="flex-1 flex flex-col justify-center">
+                        <p className={`text-xs font-bold ${isProfit ? 'text-brand-green' : 'text-brand-red'}`}>
+                          ${dayData.pnl.toFixed(0)}
+                        </p>
+                        <p className="text-xs text-gray-400">{dayData.tradeCount} trades</p>
+                      </div>
+
+                      <div className="absolute top-full left-0 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg p-3 shadow-xl z-10 hidden group-hover:block">
+                        <p className="text-xs text-gray-400 mb-1">
+                          Trades: <span className="text-gray-200 font-semibold">{dayData.tradeCount}</span>
+                        </p>
+                        <p className="text-xs text-gray-400 mb-1">
+                          Win Rate: <span className="text-gray-200 font-semibold">{dayData.winRate.toFixed(1)}%</span>
+                        </p>
+                        <p className="text-xs text-gray-400 mb-1">
+                          P&L:{' '}
+                          <span className={`font-semibold ${isProfit ? 'text-brand-green' : 'text-brand-red'}`}>
+                            ${dayData.pnl.toFixed(2)}
+                          </span>
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          Fees: <span className="text-gray-200 font-semibold">${dayData.fees.toFixed(2)}</span>
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div
+                  className={`aspect-square ${
+                    isWeekProfit ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'
+                  } border-2 rounded-lg p-2 flex flex-col justify-center items-center`}
+                  title={`Weekly Total: ${weekTotal.tradeCount} trades | P&L: $${weekTotal.pnl.toFixed(2)}`}
+                >
+                  <p className={`text-sm font-bold ${isWeekProfit ? 'text-brand-green' : 'text-brand-red'}`}>
+                    ${weekTotal.pnl.toFixed(0)}
                   </p>
-                  <p className="text-xs text-gray-400 mb-1">
-                    Win Rate: <span className="text-gray-200 font-semibold">{dayData.winRate.toFixed(1)}%</span>
-                  </p>
-                  <p className="text-xs text-gray-400 mb-1">
-                    P&L:{' '}
-                    <span className={`font-semibold ${isProfit ? 'text-brand-green' : 'text-brand-red'}`}>
-                      ${dayData.pnl.toFixed(2)}
-                    </span>
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    Fees: <span className="text-gray-200 font-semibold">${dayData.fees.toFixed(2)}</span>
-                  </p>
+                  <p className="text-xs text-gray-400">{weekTotal.tradeCount}</p>
                 </div>
               </div>
             );
