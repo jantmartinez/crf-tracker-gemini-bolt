@@ -192,7 +192,7 @@ export const fetchTrades = async (): Promise<Trade[]> => {
       operation_fills (*),
       accounts (open_close_commission, night_commission)
     `)
-    .order('created_at', { ascending: false });
+    .order('open_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching trades:', error);
@@ -274,7 +274,7 @@ export const fetchTrades = async (): Promise<Trade[]> => {
       status: group.status === 'closed' ? TradeStatus.CLOSED : TradeStatus.OPEN,
       pnl,
       accountId: group.account_id,
-      openAt: group.created_at,
+      openAt: group.open_at || group.created_at,
       closedAt: group.closed_at,
       tradeType: tradeType,
       fees: {
@@ -291,13 +291,15 @@ export const createTrade = async (tradeData: Omit<Trade, 'id' | 'status' | 'open
   // Get or create symbol
   const symbolId = await fetchOrCreateSymbol(tradeData.symbol);
 
-  // Create operation group
+  // Create operation group with open_at set to now
+  const openTimestamp = new Date().toISOString();
   const { data: group, error: groupError } = await supabase
     .from('operation_groups')
     .insert({
       account_id: tradeData.accountId,
       symbol_id: symbolId,
-      status: 'open'
+      status: 'open',
+      open_at: openTimestamp
     })
     .select()
     .single();
@@ -333,7 +335,8 @@ export const createTrade = async (tradeData: Omit<Trade, 'id' | 'status' | 'open
       close_fee: 0,
       night_fee: 0,
       fee_currency: 'USD',
-      leverage: 5 // Default leverage, should come from trade data in real implementation
+      leverage: 5, // Default leverage, should come from trade data in real implementation
+      fill_timestamp: openTimestamp
     });
 
   if (fillError) {
@@ -349,7 +352,7 @@ export const createTrade = async (tradeData: Omit<Trade, 'id' | 'status' | 'open
     status: TradeStatus.OPEN,
     pnl: 0,
     accountId: tradeData.accountId,
-    openAt: group.created_at,
+    openAt: group.open_at || group.created_at,
     tradeType: tradeData.tradeType
   };
 };
@@ -385,6 +388,10 @@ export const updateTrade = async (tradeId: string, updates: Partial<Trade>): Pro
 
   if (updates.closedAt !== undefined) {
     groupUpdates.closed_at = new Date(updates.closedAt).toISOString();
+  }
+
+  if (updates.openAt !== undefined) {
+    groupUpdates.open_at = new Date(updates.openAt).toISOString();
   }
 
   if (Object.keys(groupUpdates).length > 0) {
@@ -506,7 +513,7 @@ export const partialCloseTradeInDb = async (
   }
 
   // Calculate night fees for the position
-  const openDate = new Date(group.created_at);
+  const openDate = new Date(group.open_at || group.created_at);
   const closeDate = new Date();
   const daysHeld = Math.ceil((closeDate.getTime() - openDate.getTime()) / (1000 * 60 * 60 * 24));
   
