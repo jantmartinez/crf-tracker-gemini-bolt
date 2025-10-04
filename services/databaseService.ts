@@ -362,11 +362,16 @@ export const updateTrade = async (tradeId: string, updates: Partial<Trade>): Pro
   const groupUpdates: any = {};
 
   if (updates.symbol !== undefined) {
-    groupUpdates.symbol = updates.symbol;
+    const symbolId = await fetchOrCreateSymbol(updates.symbol);
+    groupUpdates.symbol_id = symbolId;
   }
 
   if (updates.accountId !== undefined) {
     groupUpdates.account_id = updates.accountId;
+  }
+
+  if (updates.closedAt !== undefined) {
+    groupUpdates.closed_at = new Date(updates.closedAt).toISOString();
   }
 
   if (Object.keys(groupUpdates).length > 0) {
@@ -381,10 +386,16 @@ export const updateTrade = async (tradeId: string, updates: Partial<Trade>): Pro
     }
   }
 
-  const fills = group.operation_fills;
+  const fills = group.operation_fills || [];
 
-  if (fills && fills.length > 0) {
-    const openFill = fills.find(f => f.fill_type === 'open');
+  if (fills.length > 0) {
+    const sortedFills = fills.sort((a, b) =>
+      new Date(a.fill_timestamp || a.created_at).getTime() -
+      new Date(b.fill_timestamp || b.created_at).getTime()
+    );
+
+    const openFill = sortedFills[0];
+    const closeFill = sortedFills.length > 1 ? sortedFills[sortedFills.length - 1] : null;
 
     if (openFill && (updates.quantity !== undefined || updates.openPrice !== undefined || updates.tradeType !== undefined || updates.openAt !== undefined || updates.fees !== undefined)) {
       const fillUpdates: any = {};
@@ -402,11 +413,13 @@ export const updateTrade = async (tradeId: string, updates: Partial<Trade>): Pro
       }
 
       if (updates.openAt !== undefined) {
-        fillUpdates.executed_at = new Date(updates.openAt).toISOString();
+        fillUpdates.fill_timestamp = new Date(updates.openAt).toISOString();
       }
 
       if (updates.fees !== undefined) {
-        fillUpdates.commission = updates.fees.open;
+        fillUpdates.open_fee = updates.fees.open;
+        fillUpdates.night_fee = updates.fees.night;
+        fillUpdates.fees = updates.fees.open + updates.fees.night;
       }
 
       const { error: updateFillError } = await supabase
@@ -415,12 +428,10 @@ export const updateTrade = async (tradeId: string, updates: Partial<Trade>): Pro
         .eq('id', openFill.id);
 
       if (updateFillError) {
-        console.error('Error updating operation fill:', updateFillError);
+        console.error('Error updating open fill:', updateFillError);
         throw updateFillError;
       }
     }
-
-    const closeFill = fills.find(f => f.fill_type === 'close');
 
     if (closeFill && (updates.closePrice !== undefined || updates.closedAt !== undefined || updates.fees !== undefined)) {
       const closeFillUpdates: any = {};
@@ -430,11 +441,12 @@ export const updateTrade = async (tradeId: string, updates: Partial<Trade>): Pro
       }
 
       if (updates.closedAt !== undefined) {
-        closeFillUpdates.executed_at = new Date(updates.closedAt).toISOString();
+        closeFillUpdates.fill_timestamp = new Date(updates.closedAt).toISOString();
       }
 
       if (updates.fees !== undefined) {
-        closeFillUpdates.commission = updates.fees.close;
+        closeFillUpdates.close_fee = updates.fees.close;
+        closeFillUpdates.fees = (closeFillUpdates.fees || 0) + updates.fees.close;
       }
 
       const { error: updateCloseFillError } = await supabase
@@ -446,18 +458,6 @@ export const updateTrade = async (tradeId: string, updates: Partial<Trade>): Pro
         console.error('Error updating close fill:', updateCloseFillError);
         throw updateCloseFillError;
       }
-    }
-  }
-
-  if (updates.fees !== undefined && updates.fees.night !== undefined) {
-    const { error: updateGroupFeesError } = await supabase
-      .from('operation_groups')
-      .update({ night_fees: updates.fees.night })
-      .eq('id', tradeId);
-
-    if (updateGroupFeesError) {
-      console.error('Error updating night fees:', updateGroupFeesError);
-      throw updateGroupFeesError;
     }
   }
 };
