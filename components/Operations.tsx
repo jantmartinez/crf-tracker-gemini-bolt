@@ -110,7 +110,7 @@ export const OpenOperationModal: React.FC<OpenOperationModalProps> = ({ isOpen, 
             </div>
             <div>
               <label htmlFor="leverage" className="block text-sm font-medium text-gray-400 mb-1">Leverage (1:X)</label>
-              <input id="leverage" type="number" min="1" max="500" value={leverage} onChange={(e) => setLeverage(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="5" required />
+              <input id="leverage" type="number" step="0.01" min="1" max="500" value={leverage} onChange={(e) => setLeverage(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue" placeholder="5" required />
             </div>
           </div>
 
