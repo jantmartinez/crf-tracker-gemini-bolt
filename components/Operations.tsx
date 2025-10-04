@@ -654,6 +654,16 @@ const PositionDetailsModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
 }> = ({ trade, account, isOpen, onClose }) => {
+  const [fills, setFills] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (isOpen && trade.id) {
+      import('../services/databaseService').then(({ fetchTradeFills }) => {
+        fetchTradeFills(trade.id).then(setFills).catch(console.error);
+      });
+    }
+  }, [isOpen, trade.id]);
+
   if (!isOpen) return null;
 
   // Calculate position metrics
@@ -814,7 +824,54 @@ const PositionDetailsModal: React.FC<{
             </div>
           </div>
         </div>
-        
+
+        {fills.length > 0 && (
+          <div className="mt-8 bg-gray-700 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-200 mb-4">Fill History</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-xs text-gray-400 uppercase bg-gray-800/50">
+                  <tr>
+                    <th className="p-3 text-left">Date/Time</th>
+                    <th className="p-3 text-left">Side</th>
+                    <th className="p-3 text-right">Quantity</th>
+                    <th className="p-3 text-right">Price</th>
+                    <th className="p-3 text-right">Open Fee</th>
+                    <th className="p-3 text-right">Close Fee</th>
+                    <th className="p-3 text-right">Night Fee</th>
+                    <th className="p-3 text-right">Total Fees</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fills.map((fill) => (
+                    <tr key={fill.id} className="border-t border-gray-600">
+                      <td className="p-3 text-gray-300">
+                        {new Date(fill.fill_timestamp || fill.created_at).toLocaleString()}
+                      </td>
+                      <td className="p-3">
+                        <span className={`font-semibold uppercase ${fill.side === 'buy' ? 'text-brand-green' : 'text-brand-red'}`}>
+                          {fill.side}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right text-gray-200 font-mono">{fill.quantity}</td>
+                      <td className="p-3 text-right text-gray-200 font-mono">${fill.price.toFixed(2)}</td>
+                      <td className="p-3 text-right text-gray-200 font-mono">${fill.open_fee.toFixed(2)}</td>
+                      <td className="p-3 text-right text-gray-200 font-mono">${fill.close_fee.toFixed(2)}</td>
+                      <td className="p-3 text-right text-gray-200 font-mono">${fill.night_fee.toFixed(2)}</td>
+                      <td className="p-3 text-right text-gray-200 font-mono font-bold">${(fill.open_fee + fill.close_fee + fill.night_fee).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-3 text-xs text-gray-400">
+              Total fills: {fills.length} |
+              {' '}Buy fills: {fills.filter(f => f.side === 'buy').length} |
+              {' '}Sell fills: {fills.filter(f => f.side === 'sell').length}
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-end mt-8 pt-4 border-t border-gray-700">
           <button onClick={onClose} className="px-6 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-500 transition-colors">
             Close

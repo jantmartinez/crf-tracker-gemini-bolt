@@ -2,6 +2,19 @@ import { supabase } from '../lib/supabase';
 import type { Account, Trade, WatchlistItem } from '../types';
 import { TradeStatus, TradeType } from '../types';
 
+export interface TradeFill {
+  id: string;
+  side: 'buy' | 'sell';
+  quantity: number;
+  price: number;
+  open_fee: number;
+  close_fee: number;
+  night_fee: number;
+  fees: number;
+  fill_timestamp: string;
+  created_at: string;
+}
+
 // Account operations
 export const fetchAccounts = async (): Promise<Account[]> => {
   const { data, error } = await supabase
@@ -584,6 +597,21 @@ export const partialCloseTradeInDb = async (
     // The remaining quantity will be calculated dynamically when fetching trades
     console.log(`Partially closed ${closePercentage}% of position ${tradeId}`);
   }
+};
+
+export const fetchTradeFills = async (tradeId: string): Promise<TradeFill[]> => {
+  const { data, error } = await supabase
+    .from('operation_fills')
+    .select('*')
+    .eq('group_id', tradeId)
+    .order('fill_timestamp', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching trade fills:', error);
+    throw error;
+  }
+
+  return data || [];
 };
 
 export const deleteOperation = async (operationId: string): Promise<void> => {
