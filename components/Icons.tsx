@@ -13,6 +13,7 @@ export const DashboardIcon: React.FC = () => <i className="ri-dashboard-line tex
 export const IntelligenceIcon: React.FC = () => <i className="ri-line-chart-line text-2xl"></i>;
 export const AccountsIcon: React.FC = () => <i className="ri-bank-card-line text-2xl"></i>;
 export const OperationsIcon: React.FC = () => <i className="ri-briefcase-4-line text-2xl"></i>;
+export const AnalyticsIcon: React.FC = () => <i className="ri-bar-chart-box-line text-2xl"></i>;
 export const ArrowUpIcon: React.FC<{className?: string}> = ({className}) => <i className={`ri-arrow-up-line ${className}`}></i>;
 export const ArrowDownIcon: React.FC<{className?: string}> = ({className}) => <i className={`ri-arrow-down-line ${className}`}></i>;
 export const TrashIcon: React.FC<{className?: string}> = ({className}) => <i className={`ri-delete-bin-line ${className}`}></i>;

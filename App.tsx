@@ -1,11 +1,12 @@
 
 import React, { useState, useCallback } from 'react';
 import { useEffect } from 'react';
-import { DashboardIcon, IntelligenceIcon, AccountsIcon, LogoIcon, OperationsIcon } from './components/Icons';
+import { DashboardIcon, IntelligenceIcon, AccountsIcon, LogoIcon, OperationsIcon, AnalyticsIcon } from './components/Icons';
 import Dashboard from './components/Dashboard';
 import Intelligence from './components/Intelligence';
 import Accounts from './components/Accounts';
 import Operations from './components/Operations';
+import Analytics from './components/Analytics';
 import type { Page, Account, Trade, WatchlistItem } from './types';
 import { MOCK_WATCHLIST } from './constants';
 import { TradeStatus, TradeType } from './types';
@@ -174,6 +175,8 @@ const App: React.FC = () => {
         return <Operations trades={trades} accounts={accounts} addTrade={addTrade} closeTrade={handleCloseTrade} deleteTrade={deleteTrade} />;
       case 'accounts':
         return <Accounts accounts={accounts} addAccount={addAccount} removeAccount={removeAccount} updateAccount={updateAccount} trades={trades} />;
+      case 'analytics':
+        return <Analytics trades={trades} accounts={accounts} />;
       default:
         return <Dashboard accounts={accounts} trades={trades} watchlist={watchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} closeTrade={handleCloseTrade} />;
     }
@@ -204,6 +207,7 @@ const App: React.FC = () => {
           <NavItem page="dashboard" label="Dashboard" icon={<DashboardIcon />} />
           <NavItem page="intelligence" label="Intelligence" icon={<IntelligenceIcon />} />
           <NavItem page="operations" label="Operations" icon={<OperationsIcon />} />
+          <NavItem page="analytics" label="Analytics" icon={<AnalyticsIcon />} />
           <NavItem page="accounts" label="Accounts" icon={<AccountsIcon />} />
         </nav>
         <div className="mt-auto text-center text-gray-600 text-xs">
