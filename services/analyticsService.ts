@@ -200,36 +200,61 @@ export const calculateTimeBasedMetrics = (trades: Trade[]): TimeBasedMetrics => 
   };
 };
 
-export const getMonthlyPnlData = (trades: Trade[], startDate?: Date, endDate?: Date) => {
+export const getMonthlyPnlData = (trades: Trade[]) => {
   const closedTrades = trades.filter(t => t.status === TradeStatus.CLOSED && t.closedAt);
 
-  const monthlyMap = new Map<string, { month: string; pnl: number; tradeCount: number; winCount: number }>();
+  if (closedTrades.length === 0) return [];
 
+  // Find the first and last trade dates
+  const tradeDates = closedTrades.map(t => new Date(t.closedAt!));
+  const firstTradeDate = new Date(Math.min(...tradeDates.map(d => d.getTime())));
+  const lastTradeDate = new Date(Math.max(...tradeDates.map(d => d.getTime())));
+
+  // Initialize all months from first to last trade
+  const monthlyMap = new Map<string, { month: string; pnl: number; tradeCount: number; winCount: number; sortKey: string }>();
+
+  const currentDate = new Date(firstTradeDate.getFullYear(), firstTradeDate.getMonth(), 1);
+  const endDate = new Date(lastTradeDate.getFullYear(), lastTradeDate.getMonth(), 1);
+
+  // Create entries for all months in range
+  while (currentDate <= endDate) {
+    const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+    const monthLabel = currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+    monthlyMap.set(monthKey, {
+      month: monthLabel,
+      pnl: 0,
+      tradeCount: 0,
+      winCount: 0,
+      sortKey: monthKey
+    });
+
+    currentDate.setMonth(currentDate.getMonth() + 1);
+  }
+
+  // Populate with actual trade data
   closedTrades.forEach(trade => {
     const date = new Date(trade.closedAt!);
-
-    if (startDate && date < startDate) return;
-    if (endDate && date > endDate) return;
-
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
-    if (!monthlyMap.has(monthKey)) {
-      monthlyMap.set(monthKey, { month: monthLabel, pnl: 0, tradeCount: 0, winCount: 0 });
-    }
-
-    const data = monthlyMap.get(monthKey)!;
-    data.pnl += trade.pnl ?? 0;
-    data.tradeCount += 1;
-    if ((trade.pnl ?? 0) > 0) {
-      data.winCount += 1;
+    const data = monthlyMap.get(monthKey);
+    if (data) {
+      data.pnl += trade.pnl ?? 0;
+      data.tradeCount += 1;
+      if ((trade.pnl ?? 0) > 0) {
+        data.winCount += 1;
+      }
     }
   });
 
-  return Array.from(monthlyMap.values()).map(item => ({
-    ...item,
-    winRate: item.tradeCount > 0 ? (item.winCount / item.tradeCount) * 100 : 0,
-  }));
+  return Array.from(monthlyMap.values())
+    .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+    .map(item => ({
+      month: item.month,
+      pnl: item.pnl,
+      tradeCount: item.tradeCount,
+      winRate: item.tradeCount > 0 ? (item.winCount / item.tradeCount) * 100 : 0,
+    }));
 };
 
 export const getSymbolDistribution = (trades: Trade[]) => {
