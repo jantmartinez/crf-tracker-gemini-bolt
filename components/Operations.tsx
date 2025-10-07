@@ -1076,7 +1076,14 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
   const [tradeToEdit, setTradeToEdit] = useState<Trade | null>(null);
 
   const openTrades = trades.filter(t => t.status === TradeStatus.OPEN);
-  const closedTrades = [...trades.filter(t => t.status === TradeStatus.CLOSED)].sort((a, b) => new Date(b.closedAt!).getTime() - new Date(a.closedAt!).getTime());
+  const fullyClosedTrades = trades.filter(t => t.status === TradeStatus.CLOSED);
+  const partiallyClosedTrades = trades.filter(t => t.status === TradeStatus.OPEN && t.isPartiallyCloseD);
+
+  const closedTrades = [...fullyClosedTrades, ...partiallyClosedTrades].sort((a, b) => {
+    const dateA = a.closedAt ? new Date(a.closedAt).getTime() : new Date(a.openAt).getTime();
+    const dateB = b.closedAt ? new Date(b.closedAt).getTime() : new Date(b.openAt).getTime();
+    return dateB - dateA;
+  });
 
   const getAccountName = (id: string) => accounts.find(acc => acc.id === id)?.name || 'Unknown';
   const getAccount = (id: string) => accounts.find(acc => acc.id === id);
@@ -1114,18 +1121,29 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
               </tr>
             </thead>
             <tbody>
-              {trades.length > 0 ? trades.map(trade => (
+              {trades.length > 0 ? trades.map(trade => {
+                const isPartiallyClosedInHistory = !isOpenOnly && trade.isPartiallyCloseD;
+                const isPartiallyOpenInOpen = isOpenOnly && trade.isPartiallyCloseD;
+                const closedQuantity = trade.originalQuantity && trade.isPartiallyCloseD
+                  ? trade.originalQuantity - trade.quantity
+                  : trade.quantity;
+
+                return (
                 <tr key={trade.id} className="border-b border-gray-700 hover:bg-gray-700/50">
-                  <td className="p-4 font-bold">{trade.symbol}</td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold">{trade.symbol}</span>
+                      {isPartiallyClosedInHistory && (
+                        <span className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded">Partially Closed</span>
+                      )}
+                      {isPartiallyOpenInOpen && (
+                        <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">Partially Open</span>
+                      )}
+                    </div>
+                  </td>
                   <td className={`p-4 font-semibold capitalize ${trade.tradeType === TradeType.LONG ? 'text-brand-green' : 'text-brand-red'}`}>{trade.tradeType}</td>
                   <td className="p-4">
-                    {trade.isPartiallyCloseD && trade.originalQuantity ? (
-                      <span>
-                        {trade.quantity} <span className="text-gray-500">/ {trade.originalQuantity}</span>
-                      </span>
-                    ) : (
-                      trade.quantity
-                    )}
+                    {isPartiallyClosedInHistory ? closedQuantity : trade.quantity}
                   </td>
                   <td className="p-4 font-mono">${trade.openPrice.toFixed(2)}</td>
                   {showClosedColumns && (
@@ -1175,7 +1193,8 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                   </div>
                 </td>
               </tr>
-            )) : (
+                );
+              }) : (
               <tr><td colSpan={showClosedColumns ? 9 : 7} className="text-center p-8 text-gray-500">No trades to display.</td></tr>
             )}
           </tbody>
