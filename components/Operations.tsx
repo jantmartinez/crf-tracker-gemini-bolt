@@ -1075,7 +1075,8 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
   const [tradeToView, setTradeToView] = useState<Trade | null>(null);
   const [tradeToEdit, setTradeToEdit] = useState<Trade | null>(null);
 
-  const openTrades = trades.filter(t => t.status === TradeStatus.OPEN);
+  const openTrades = trades.filter(t => t.status === TradeStatus.OPEN && !t.isPartiallyCloseD);
+  const partiallyClosedTrades = trades.filter(t => t.status === TradeStatus.OPEN && t.isPartiallyCloseD);
   const closedTrades = [...trades.filter(t => t.status === TradeStatus.CLOSED)].sort((a, b) => new Date(b.closedAt!).getTime() - new Date(a.closedAt!).getTime());
 
   const getAccountName = (id: string) => accounts.find(acc => acc.id === id)?.name || 'Unknown';
@@ -1091,7 +1092,7 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
       setTradeToDelete(null);
     }
   };
-  const TradeTable: React.FC<{title: string, trades: Trade[], showDeleteButton?: boolean}> = ({ title, trades, showDeleteButton = false }) => (
+  const TradeTable: React.FC<{title: string, trades: Trade[], showDeleteButton?: boolean, isPartiallyClosedSection?: boolean}> = ({ title, trades, showDeleteButton = false, isPartiallyClosedSection = false }) => (
     <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
       <h3 className="text-lg font-semibold mb-4 text-gray-200">{title}</h3>
       <div className="overflow-x-auto">
@@ -1103,7 +1104,7 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
               <th className="p-4">Quantity</th>
               <th className="p-4">Open Price</th>
               <th className="p-4">Account</th>
-              <th className="p-4">{title === 'Open Positions' ? 'Open Date' : 'P&L'}</th>
+              <th className="p-4">{title === 'Open Positions' || isPartiallyClosedSection ? 'Open Date' : 'P&L'}</th>
               <th className="p-4 text-center">Actions</th>
             </tr>
           </thead>
@@ -1112,7 +1113,15 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
               <tr key={trade.id} className="border-b border-gray-700 hover:bg-gray-700/50">
                 <td className="p-4 font-bold">{trade.symbol}</td>
                 <td className={`p-4 font-semibold capitalize ${trade.tradeType === TradeType.LONG ? 'text-brand-green' : 'text-brand-red'}`}>{trade.tradeType}</td>
-                <td className="p-4">{trade.quantity}</td>
+                <td className="p-4">
+                  {isPartiallyClosedSection && trade.originalQuantity ? (
+                    <span>
+                      {trade.quantity} <span className="text-gray-500">/ {trade.originalQuantity}</span>
+                    </span>
+                  ) : (
+                    trade.quantity
+                  )}
+                </td>
                 <td className="p-4 font-mono">${trade.openPrice.toFixed(2)}</td>
                 <td className="p-4">{getAccountName(trade.accountId)}</td>
                 <td className={`p-4 font-mono ${trade.status === TradeStatus.CLOSED ? (trade.pnl! >= 0 ? 'text-brand-green' : 'text-brand-red') : ''}`}>
@@ -1168,6 +1177,9 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
           </button>
         </div>
         <TradeTable title="Open Positions" trades={openTrades} />
+        {partiallyClosedTrades.length > 0 && (
+          <TradeTable title="Partially Closed Positions" trades={partiallyClosedTrades} isPartiallyClosedSection={true} />
+        )}
         <TradeTable title="Trade History" trades={closedTrades} showDeleteButton={true} />
       </div>
 

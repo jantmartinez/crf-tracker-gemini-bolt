@@ -29,6 +29,8 @@ export interface Trade {
     night: number;
     total: number;
   };
+  originalQuantity?: number; // Original opening quantity
+  isPartiallyCloseD?: boolean; // Whether the position has been partially closed
 }
 
 export interface Account {

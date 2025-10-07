@@ -265,6 +265,13 @@ export const fetchTrades = async (): Promise<Trade[]> => {
       }
     }
 
+    // Calculate original quantity (from opening fills only)
+    const openingFills = tradeType === TradeType.LONG ? buyFills : sellFills;
+    const originalQuantity = openingFills.reduce((sum, f) => sum + f.quantity, 0);
+
+    // Determine if position is partially closed
+    const isPartiallyCloseD = group.status === 'open' && netQuantity > 0 && netQuantity < originalQuantity;
+
     return {
       id: group.id,
       symbol: group.symbols?.ticker || 'UNKNOWN',
@@ -282,7 +289,9 @@ export const fetchTrades = async (): Promise<Trade[]> => {
         close: totalCloseFees,
         night: totalNightFees,
         total: totalFees
-      }
+      },
+      originalQuantity,
+      isPartiallyCloseD
     };
   });
 };
