@@ -18,7 +18,9 @@ export interface Trade {
   openPrice: number;
   closePrice?: number;
   status: TradeStatus;
-  pnl?: number; // Realized or Unrealized P&L
+  pnl?: number; // Realized or Unrealized P&L (depends on context)
+  realizedPnl?: number; // Realized P&L for closed portion of partially closed positions
+  unrealizedPnl?: number; // Unrealized P&L for open portion of partially closed positions
   accountId: string;
   closedAt?: string;
   tradeType: TradeType;

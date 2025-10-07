@@ -120,12 +120,27 @@ const AccountCard: React.FC<{
 
   // Calculate current balance based on starting balance + realized P&L + unrealized P&L from trades
   const accountTrades = trades.filter(trade => trade.accountId === account.id);
-  const realizedPnl = accountTrades
-    .filter(trade => trade.status === TradeStatus.CLOSED)
-    .reduce((sum, trade) => sum + (trade.pnl || 0), 0);
-  const unrealizedPnl = accountTrades
-    .filter(trade => trade.status === TradeStatus.OPEN)
-    .reduce((sum, trade) => sum + (trade.pnl || 0), 0);
+
+  // Realized P&L: from fully closed trades + closed portion of partially closed trades
+  const realizedPnl = accountTrades.reduce((sum, trade) => {
+    if (trade.status === TradeStatus.CLOSED) {
+      return sum + (trade.pnl || 0);
+    } else if (trade.isPartiallyCloseD && trade.realizedPnl !== undefined) {
+      return sum + trade.realizedPnl;
+    }
+    return sum;
+  }, 0);
+
+  // Unrealized P&L: from fully open trades + open portion of partially closed trades
+  const unrealizedPnl = accountTrades.reduce((sum, trade) => {
+    if (trade.status === TradeStatus.OPEN && !trade.isPartiallyCloseD) {
+      return sum + (trade.pnl || 0);
+    } else if (trade.isPartiallyCloseD && trade.unrealizedPnl !== undefined) {
+      return sum + trade.unrealizedPnl;
+    }
+    return sum;
+  }, 0);
+
   const currentBalance = account.startingBalance + realizedPnl + unrealizedPnl;
   return (
     <>

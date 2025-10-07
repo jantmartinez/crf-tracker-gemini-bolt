@@ -1129,6 +1129,11 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                   ? trade.originalQuantity - trade.quantity
                   : trade.quantity;
 
+                // Use appropriate P&L based on context
+                const displayPnl = isPartiallyClosedInHistory
+                  ? trade.realizedPnl
+                  : (isPartiallyOpenInOpen ? trade.unrealizedPnl : trade.pnl);
+
                 return (
                 <tr key={trade.id} className="border-b border-gray-700 hover:bg-gray-700/50">
                   <td className="p-4">
@@ -1154,14 +1159,14 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                   )}
                   <td className="p-4">{getAccountName(trade.accountId)}</td>
                   {showClosedColumns && (
-                    <td className={`p-4 font-mono ${trade.pnl !== undefined ? (trade.pnl >= 0 ? 'text-brand-green' : 'text-brand-red') : ''}`}>
-                      {trade.pnl !== undefined ? `${trade.pnl.toFixed(2)} USD` : '-'}
+                    <td className={`p-4 font-mono ${displayPnl !== undefined ? (displayPnl >= 0 ? 'text-brand-green' : 'text-brand-red') : ''}`}>
+                      {displayPnl !== undefined ? `${displayPnl.toFixed(2)} USD` : '-'}
                     </td>
                   )}
                   {isOpenOnly && (
                     <>
-                      <td className={`p-4 font-mono ${trade.pnl !== undefined ? (trade.pnl >= 0 ? 'text-brand-green' : 'text-brand-red') : ''}`}>
-                        {!isPartiallyOpenInOpen && trade.pnl !== undefined ? `${trade.pnl.toFixed(2)} USD` : '-'}
+                      <td className={`p-4 font-mono ${displayPnl !== undefined ? (displayPnl >= 0 ? 'text-brand-green' : 'text-brand-red') : ''}`}>
+                        {displayPnl !== undefined ? `${displayPnl.toFixed(2)} USD` : '-'}
                       </td>
                       <td className="p-4 font-mono">
                         {new Date(trade.openAt).toLocaleDateString()}

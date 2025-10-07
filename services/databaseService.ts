@@ -255,6 +255,8 @@ export const fetchTrades = async (): Promise<Trade[]> => {
     const totalFees = totalOpenFees + totalCloseFees + totalNightFees;
 
     let pnl = 0;
+    let realizedPnl = 0;
+    let unrealizedPnl = 0;
 
     if (group.status === 'closed') {
       // For closed positions, calculate realized P&L minus fees
@@ -266,14 +268,28 @@ export const fetchTrades = async (): Promise<Trade[]> => {
               closingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - totalFees;
       }
     } else if (isPartiallyCloseD) {
-      // For partially closed positions, calculate realized P&L from closed portion
+      // For partially closed positions, calculate both realized and unrealized P&L
+      const totalOpenValue = openingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0);
+      const totalCloseValue = closingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0);
+
+      // Realized P&L: closed portion
       if (tradeType === TradeType.LONG) {
-        pnl = closingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) -
-              openingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) * (closedQuantity / originalQuantity) - totalFees;
+        realizedPnl = totalCloseValue - (totalOpenValue * (closedQuantity / originalQuantity)) - totalFees;
       } else {
-        pnl = openingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) * (closedQuantity / originalQuantity) -
-              closingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - totalFees;
+        realizedPnl = (totalOpenValue * (closedQuantity / originalQuantity)) - totalCloseValue - totalFees;
       }
+
+      // Unrealized P&L: open portion using latest price
+      const latestPrice = group.symbols?.latest_price;
+      if (latestPrice && latestPrice > 0) {
+        if (tradeType === TradeType.LONG) {
+          unrealizedPnl = (latestPrice - openPrice) * netQuantity;
+        } else {
+          unrealizedPnl = (openPrice - latestPrice) * netQuantity;
+        }
+      }
+
+      pnl = unrealizedPnl; // Default pnl for open positions
     } else {
       // For open positions, calculate unrealized P&L using latest_price
       const latestPrice = group.symbols?.latest_price;
@@ -297,6 +313,8 @@ export const fetchTrades = async (): Promise<Trade[]> => {
       closePrice: (group.status === 'closed' || isPartiallyCloseD) && avgClosePrice > 0 ? avgClosePrice : undefined,
       status: group.status === 'closed' ? TradeStatus.CLOSED : TradeStatus.OPEN,
       pnl,
+      realizedPnl: isPartiallyCloseD ? realizedPnl : undefined,
+      unrealizedPnl: isPartiallyCloseD ? unrealizedPnl : undefined,
       accountId: group.account_id,
       openAt: group.open_at || group.created_at,
       closedAt: group.closed_at,

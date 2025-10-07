@@ -71,8 +71,26 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
   const winningTrades = closedTrades.filter(t => t.pnl! > 0).length;
   const winRate = totalTrades > 0 ? ((winningTrades / totalTrades) * 100).toFixed(1) + '%' : 'N/A';
 
-  const realizedPnl = closedTrades.reduce((sum, trade) => sum + trade.pnl!, 0);
-  const unrealizedPnl = openTrades.reduce((sum, trade) => sum + trade.pnl!, 0);
+  // Realized P&L: from fully closed trades + closed portion of partially closed trades
+  const realizedPnl = trades.reduce((sum, trade) => {
+    if (trade.status === TradeStatus.CLOSED) {
+      return sum + (trade.pnl || 0);
+    } else if (trade.isPartiallyCloseD && trade.realizedPnl !== undefined) {
+      return sum + trade.realizedPnl;
+    }
+    return sum;
+  }, 0);
+
+  // Unrealized P&L: from fully open trades + open portion of partially closed trades
+  const unrealizedPnl = trades.reduce((sum, trade) => {
+    if (trade.status === TradeStatus.OPEN && !trade.isPartiallyCloseD) {
+      return sum + (trade.pnl || 0);
+    } else if (trade.isPartiallyCloseD && trade.unrealizedPnl !== undefined) {
+      return sum + trade.unrealizedPnl;
+    }
+    return sum;
+  }, 0);
+
   const startingBalance = accounts.reduce((sum, acc) => sum + acc.startingBalance, 0);
   const currentEquity = startingBalance + realizedPnl + unrealizedPnl;
   
@@ -209,18 +227,21 @@ const Dashboard: React.FC<DashboardProps> = ({ accounts, trades, watchlist, remo
       <div className="space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <TableCard title="Open Positions" headers={['Symbol', 'Quantity', 'Unrealized P&L', 'Actions']}>
-              {openTrades.length > 0 ? openTrades.map(trade => (
+              {openTrades.length > 0 ? openTrades.map(trade => {
+                const displayPnl = trade.isPartiallyCloseD ? trade.unrealizedPnl : trade.pnl;
+                return (
                   <tr key={trade.id} className="border-b border-gray-700 hover:bg-gray-700/50">
                     <td className="p-4 font-bold">{trade.symbol}</td>
                     <td className="p-4">{trade.quantity}</td>
-                    <td className={`p-4 font-mono text-right ${trade.pnl! >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>{trade.pnl?.toFixed(2)} USD</td>
+                    <td className={`p-4 font-mono text-right ${displayPnl !== undefined && displayPnl >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>{displayPnl?.toFixed(2)} USD</td>
                     <td className="p-4 text-center">
                         <button onClick={() => handleClosePosition(trade)} className="text-gray-400 hover:text-brand-red" title="Close position">
                           <i className="ri-close-line"></i>
                         </button>
                     </td>
                   </tr>
-              ))
+                );
+              })
               : <tr><td colSpan={4} className="text-center p-8 text-gray-500">No open positions.</td></tr>}
             </TableCard>
             <TableCard title="Watchlist" headers={['Symbol', 'Company Name', 'Price', 'Actions']}>
