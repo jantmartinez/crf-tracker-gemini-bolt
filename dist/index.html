@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CFD Tracker Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              // Light theme remapping
+              'gray-900': '#f3f4f6', // Main background (was #121212)
+              'gray-800': '#ffffff', // Card background (was #1e1e1e)
+              'gray-700': '#e5e7eb', // Borders, hover (was #2d2d2d)
+              'gray-600': '#6b7280', // Muted text (was #4d4d4d)
+              'gray-400': '#4b5563', // Secondary text (was #999999)
+              'gray-200': '#111827', // Primary text (was #e5e5e5)
+              'brand-blue': '#3b82f6',
+              'brand-green': '#22c55e',
+              'brand-red': '#ef4444',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-in-out',
+            },
+          }
+        }
+      }
+    </script>
+
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.20.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.2.1"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/assets/index-2mAq26uZ.js"></script>
+</head>
+  <body class="bg-gray-900 text-gray-200">
+    <div id="root"></div>
+  </body>
+</html>
