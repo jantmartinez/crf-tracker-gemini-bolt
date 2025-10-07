@@ -188,7 +188,7 @@ export const fetchTrades = async (): Promise<Trade[]> => {
     .from('operation_groups')
     .select(`
       *,
-      symbols (ticker),
+      symbols (ticker, latest_price),
       operation_fills (*),
       accounts (open_close_commission, night_commission)
     `)
@@ -275,12 +275,17 @@ export const fetchTrades = async (): Promise<Trade[]> => {
               closingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - totalFees;
       }
     } else {
-      // For open positions, calculate unrealized P&L (mock with 2% gain for demo)
-      const currentPrice = openPrice * 1.02; // Mock current price
-      if (tradeType === TradeType.LONG) {
-        pnl = (currentPrice - openPrice) * netQuantity - totalFees;
+      // For open positions, calculate unrealized P&L using latest_price
+      const latestPrice = group.symbols?.latest_price;
+      if (latestPrice && latestPrice > 0) {
+        if (tradeType === TradeType.LONG) {
+          pnl = (latestPrice - openPrice) * netQuantity - totalFees;
+        } else {
+          pnl = (openPrice - latestPrice) * netQuantity - totalFees;
+        }
       } else {
-        pnl = (openPrice - currentPrice) * netQuantity - totalFees;
+        // If no latest price available, P&L is 0
+        pnl = -totalFees;
       }
     }
 

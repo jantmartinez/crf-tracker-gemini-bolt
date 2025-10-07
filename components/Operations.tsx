@@ -1116,6 +1116,7 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                 {showClosedColumns && <th className="p-4">Close Price</th>}
                 <th className="p-4">Account</th>
                 {showClosedColumns && <th className="p-4">P&L</th>}
+                {isOpenOnly && <th className="p-4">Unrealized P&L</th>}
                 {isOpenOnly && <th className="p-4">Open Date</th>}
                 <th className="p-4 text-center">Actions</th>
               </tr>
@@ -1158,9 +1159,14 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                     </td>
                   )}
                   {isOpenOnly && (
-                    <td className="p-4 font-mono">
-                      {new Date(trade.openAt).toLocaleDateString()}
-                    </td>
+                    <>
+                      <td className={`p-4 font-mono ${trade.pnl !== undefined ? (trade.pnl >= 0 ? 'text-brand-green' : 'text-brand-red') : ''}`}>
+                        {!isPartiallyOpenInOpen && trade.pnl !== undefined ? `${trade.pnl.toFixed(2)} USD` : '-'}
+                      </td>
+                      <td className="p-4 font-mono">
+                        {new Date(trade.openAt).toLocaleDateString()}
+                      </td>
+                    </>
                   )}
                 <td className="p-4 text-center">
                   <div className="flex justify-center items-center space-x-2">
@@ -1195,7 +1201,7 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
               </tr>
                 );
               }) : (
-              <tr><td colSpan={showClosedColumns ? 9 : 7} className="text-center p-8 text-gray-500">No trades to display.</td></tr>
+              <tr><td colSpan={showClosedColumns ? 9 : 8} className="text-center p-8 text-gray-500">No trades to display.</td></tr>
             )}
           </tbody>
         </table>

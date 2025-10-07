@@ -118,12 +118,15 @@ const AccountCard: React.FC<{
     setSaveMessage(null);
   };
 
-  // Calculate current balance based on starting balance + realized P&L from trades
+  // Calculate current balance based on starting balance + realized P&L + unrealized P&L from trades
   const accountTrades = trades.filter(trade => trade.accountId === account.id);
   const realizedPnl = accountTrades
     .filter(trade => trade.status === TradeStatus.CLOSED)
     .reduce((sum, trade) => sum + (trade.pnl || 0), 0);
-  const currentBalance = account.startingBalance + realizedPnl;
+  const unrealizedPnl = accountTrades
+    .filter(trade => trade.status === TradeStatus.OPEN)
+    .reduce((sum, trade) => sum + (trade.pnl || 0), 0);
+  const currentBalance = account.startingBalance + realizedPnl + unrealizedPnl;
   return (
     <>
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 transition-all hover:border-brand-blue hover:shadow-2xl">
@@ -161,7 +164,22 @@ const AccountCard: React.FC<{
       <p className="text-gray-400">Current Balance</p>
       <p className="text-2xl font-mono font-bold text-gray-200">${currentBalance.toLocaleString()}</p>
     </div>
-    
+
+    <div className="mt-4 grid grid-cols-2 gap-4">
+      <div>
+        <p className="text-gray-400 text-sm">Realized P&L</p>
+        <p className={`text-lg font-mono font-bold ${realizedPnl >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>
+          ${realizedPnl.toFixed(2)}
+        </p>
+      </div>
+      <div>
+        <p className="text-gray-400 text-sm">Unrealized P&L</p>
+        <p className={`text-lg font-mono font-bold ${unrealizedPnl >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>
+          ${unrealizedPnl.toFixed(2)}
+        </p>
+      </div>
+    </div>
+
     {/* Commission Settings Section */}
     <div className="mt-6 pt-4 border-t border-gray-700">
       <div className="flex justify-between items-center mb-3">
