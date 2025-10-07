@@ -234,8 +234,18 @@ export const fetchTrades = async (): Promise<Trade[]> => {
       openPrice = firstFill?.price || 0;
     }
     
-    const avgSellPrice = sellFills.length > 0
-      ? sellFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) / totalSellQuantity
+    // Calculate original quantity (from opening fills only)
+    const openingFills = tradeType === TradeType.LONG ? buyFills : sellFills;
+    const closingFills = tradeType === TradeType.LONG ? sellFills : buyFills;
+    const originalQuantity = openingFills.reduce((sum, f) => sum + f.quantity, 0);
+
+    // Determine if position is partially closed
+    const isPartiallyCloseD = group.status === 'open' && netQuantity > 0 && netQuantity < originalQuantity;
+
+    // Calculate average close price (from closing fills)
+    const closedQuantity = closingFills.reduce((sum, f) => sum + f.quantity, 0);
+    const avgClosePrice = closedQuantity > 0
+      ? closingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) / closedQuantity
       : 0;
 
     // Calculate P&L including fees
@@ -243,17 +253,26 @@ export const fetchTrades = async (): Promise<Trade[]> => {
     const totalCloseFees = fills.reduce((sum, f) => sum + (f.close_fee || 0), 0);
     const totalNightFees = fills.reduce((sum, f) => sum + (f.night_fee || 0), 0);
     const totalFees = totalOpenFees + totalCloseFees + totalNightFees;
-    
+
     let pnl = 0;
-    
+
     if (group.status === 'closed') {
       // For closed positions, calculate realized P&L minus fees
       if (tradeType === TradeType.LONG) {
-        pnl = sellFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - 
-              buyFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - totalFees;
+        pnl = closingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) -
+              openingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - totalFees;
       } else {
-        pnl = buyFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - 
-              sellFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - totalFees;
+        pnl = openingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) -
+              closingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - totalFees;
+      }
+    } else if (isPartiallyCloseD) {
+      // For partially closed positions, calculate realized P&L from closed portion
+      if (tradeType === TradeType.LONG) {
+        pnl = closingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) -
+              openingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) * (closedQuantity / originalQuantity) - totalFees;
+      } else {
+        pnl = openingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) * (closedQuantity / originalQuantity) -
+              closingFills.reduce((sum, f) => sum + (f.price * f.quantity), 0) - totalFees;
       }
     } else {
       // For open positions, calculate unrealized P&L (mock with 2% gain for demo)
@@ -265,19 +284,12 @@ export const fetchTrades = async (): Promise<Trade[]> => {
       }
     }
 
-    // Calculate original quantity (from opening fills only)
-    const openingFills = tradeType === TradeType.LONG ? buyFills : sellFills;
-    const originalQuantity = openingFills.reduce((sum, f) => sum + f.quantity, 0);
-
-    // Determine if position is partially closed
-    const isPartiallyCloseD = group.status === 'open' && netQuantity > 0 && netQuantity < originalQuantity;
-
     return {
       id: group.id,
       symbol: group.symbols?.ticker || 'UNKNOWN',
       quantity: Math.abs(netQuantity) || Math.max(totalBuyQuantity, totalSellQuantity),
       openPrice: openPrice,
-      closePrice: group.status === 'closed' ? avgSellPrice : undefined,
+      closePrice: (group.status === 'closed' || isPartiallyCloseD) && avgClosePrice > 0 ? avgClosePrice : undefined,
       status: group.status === 'closed' ? TradeStatus.CLOSED : TradeStatus.OPEN,
       pnl,
       accountId: group.account_id,

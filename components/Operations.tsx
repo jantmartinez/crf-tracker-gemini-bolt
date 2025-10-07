@@ -1092,41 +1092,59 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
       setTradeToDelete(null);
     }
   };
-  const TradeTable: React.FC<{title: string, trades: Trade[], showDeleteButton?: boolean, isPartiallyClosedSection?: boolean}> = ({ title, trades, showDeleteButton = false, isPartiallyClosedSection = false }) => (
-    <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-      <h3 className="text-lg font-semibold mb-4 text-gray-200">{title}</h3>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left text-gray-400">
-          <thead className="text-xs text-gray-400 uppercase bg-gray-700/50">
-            <tr>
-              <th className="p-4">Symbol</th>
-              <th className="p-4">Type</th>
-              <th className="p-4">Quantity</th>
-              <th className="p-4">Open Price</th>
-              <th className="p-4">Account</th>
-              <th className="p-4">{title === 'Open Positions' || isPartiallyClosedSection ? 'Open Date' : 'P&L'}</th>
-              <th className="p-4 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {trades.length > 0 ? trades.map(trade => (
-              <tr key={trade.id} className="border-b border-gray-700 hover:bg-gray-700/50">
-                <td className="p-4 font-bold">{trade.symbol}</td>
-                <td className={`p-4 font-semibold capitalize ${trade.tradeType === TradeType.LONG ? 'text-brand-green' : 'text-brand-red'}`}>{trade.tradeType}</td>
-                <td className="p-4">
-                  {isPartiallyClosedSection && trade.originalQuantity ? (
-                    <span>
-                      {trade.quantity} <span className="text-gray-500">/ {trade.originalQuantity}</span>
-                    </span>
-                  ) : (
-                    trade.quantity
+  const TradeTable: React.FC<{title: string, trades: Trade[], showDeleteButton?: boolean, isPartiallyClosedSection?: boolean}> = ({ title, trades, showDeleteButton = false, isPartiallyClosedSection = false }) => {
+    const isOpenOnly = title === 'Open Positions';
+    const showClosedColumns = !isOpenOnly;
+
+    return (
+      <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+        <h3 className="text-lg font-semibold mb-4 text-gray-200">{title}</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left text-gray-400">
+            <thead className="text-xs text-gray-400 uppercase bg-gray-700/50">
+              <tr>
+                <th className="p-4">Symbol</th>
+                <th className="p-4">Type</th>
+                <th className="p-4">Quantity</th>
+                <th className="p-4">Open Price</th>
+                {showClosedColumns && <th className="p-4">Close Price</th>}
+                <th className="p-4">Account</th>
+                {showClosedColumns && <th className="p-4">P&L</th>}
+                {isOpenOnly && <th className="p-4">Open Date</th>}
+                <th className="p-4 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {trades.length > 0 ? trades.map(trade => (
+                <tr key={trade.id} className="border-b border-gray-700 hover:bg-gray-700/50">
+                  <td className="p-4 font-bold">{trade.symbol}</td>
+                  <td className={`p-4 font-semibold capitalize ${trade.tradeType === TradeType.LONG ? 'text-brand-green' : 'text-brand-red'}`}>{trade.tradeType}</td>
+                  <td className="p-4">
+                    {isPartiallyClosedSection && trade.originalQuantity ? (
+                      <span>
+                        {trade.quantity} <span className="text-gray-500">/ {trade.originalQuantity}</span>
+                      </span>
+                    ) : (
+                      trade.quantity
+                    )}
+                  </td>
+                  <td className="p-4 font-mono">${trade.openPrice.toFixed(2)}</td>
+                  {showClosedColumns && (
+                    <td className="p-4 font-mono">
+                      {trade.closePrice ? `$${trade.closePrice.toFixed(2)}` : '-'}
+                    </td>
                   )}
-                </td>
-                <td className="p-4 font-mono">${trade.openPrice.toFixed(2)}</td>
-                <td className="p-4">{getAccountName(trade.accountId)}</td>
-                <td className={`p-4 font-mono ${trade.status === TradeStatus.CLOSED ? (trade.pnl! >= 0 ? 'text-brand-green' : 'text-brand-red') : ''}`}>
-                  {trade.status === TradeStatus.OPEN ? new Date(trade.openAt).toLocaleDateString() : `${trade.pnl?.toFixed(2)} USD`}
-                </td>
+                  <td className="p-4">{getAccountName(trade.accountId)}</td>
+                  {showClosedColumns && (
+                    <td className={`p-4 font-mono ${trade.pnl !== undefined ? (trade.pnl >= 0 ? 'text-brand-green' : 'text-brand-red') : ''}`}>
+                      {trade.pnl !== undefined ? `${trade.pnl.toFixed(2)} USD` : '-'}
+                    </td>
+                  )}
+                  {isOpenOnly && (
+                    <td className="p-4 font-mono">
+                      {new Date(trade.openAt).toLocaleDateString()}
+                    </td>
+                  )}
                 <td className="p-4 text-center">
                   <div className="flex justify-center items-center space-x-2">
                   {trade.status === TradeStatus.OPEN && (
@@ -1159,13 +1177,14 @@ const Operations: React.FC<OperationsProps> = ({ trades, accounts, addTrade, clo
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan={7} className="text-center p-8 text-gray-500">No trades to display.</td></tr>
+              <tr><td colSpan={showClosedColumns ? 9 : 7} className="text-center p-8 text-gray-500">No trades to display.</td></tr>
             )}
           </tbody>
         </table>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <>
