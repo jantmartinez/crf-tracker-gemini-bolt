@@ -728,7 +728,7 @@ export const fetchWatchlist = async (): Promise<WatchlistItem[]> => {
   return data.map(symbol => ({
     symbol: symbol.ticker,
     companyName: symbol.name || `${symbol.ticker} Corporation`,
-    currentPrice: symbol.last_price || 0
+    currentPrice: symbol.latest_price || 0
   }));
 };
 
