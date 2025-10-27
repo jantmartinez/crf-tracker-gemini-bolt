@@ -40,6 +40,7 @@ Deno.serve(async (req: Request) => {
       hasSupabaseUrl: !!supabaseUrl,
       hasServiceKey: !!supabaseServiceKey,
       hasFinnhubKey: !!finnhubApiKey,
+      finnhubKeyPreview: finnhubApiKey ? finnhubApiKey.substring(0, 4) + '...' : 'not set',
     });
 
     if (!finnhubApiKey || finnhubApiKey === 'your_finnhub_api_key_here') {
@@ -91,18 +92,28 @@ Deno.serve(async (req: Request) => {
     for (const symbol of symbols as Symbol[]) {
       try {
         const finnhubUrl = `https://finnhub.io/api/v1/quote?symbol=${symbol.ticker}&token=${finnhubApiKey}`;
-        console.log(`Fetching price for ${symbol.ticker}`);
+        console.log(`Fetching price for ${symbol.ticker} from ${finnhubUrl.replace(finnhubApiKey, '***')}`);
         
         const response = await fetch(finnhubUrl);
+        const responseText = await response.text();
+        
+        console.log(`Response for ${symbol.ticker}: status=${response.status}, body=${responseText}`);
         
         if (!response.ok) {
-          throw new Error(`Finnhub API error: ${response.status} ${response.statusText}`);
+          throw new Error(`Finnhub API error: ${response.status} ${response.statusText}. Response: ${responseText}`);
         }
 
-        const quote: FinnhubQuote = await response.json();
+        let quote: FinnhubQuote;
+        try {
+          quote = JSON.parse(responseText);
+        } catch (parseError) {
+          throw new Error(`Failed to parse Finnhub response: ${responseText}`);
+        }
+        
+        console.log(`Quote for ${symbol.ticker}:`, quote);
         
         if (!quote.c || quote.c <= 0) {
-          throw new Error(`Invalid price data received for ${symbol.ticker}`);
+          throw new Error(`Invalid price data for ${symbol.ticker}: price=${quote.c}, full response=${JSON.stringify(quote)}`);
         }
 
         const oldPrice = symbol.latest_price;
@@ -114,7 +125,7 @@ Deno.serve(async (req: Request) => {
           .eq('id', symbol.id);
 
         if (updateError) {
-          throw new Error(`Failed to update price: ${updateError.message}`);
+          throw new Error(`Failed to update price in DB: ${updateError.message}`);
         }
 
         await supabase.from('price_update_log').insert({
@@ -135,7 +146,7 @@ Deno.serve(async (req: Request) => {
           status: 'success',
         });
 
-        console.log(`✓ Updated ${symbol.ticker}: $${newPrice}`);
+        console.log(`✓ Updated ${symbol.ticker}: $${oldPrice} → $${newPrice}`);
       } catch (error) {
         failCount++;
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -154,6 +165,7 @@ Deno.serve(async (req: Request) => {
 
         results.push({
           ticker: symbol.ticker,
+          oldPrice: symbol.latest_price,
           status: 'failed',
           error: errorMessage,
         });

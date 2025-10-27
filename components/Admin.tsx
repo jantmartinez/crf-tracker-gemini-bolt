@@ -164,6 +164,7 @@ const Admin: React.FC = () => {
                     <th className="p-3">New Price</th>
                     <th className="p-3">Change</th>
                     <th className="p-3">Status</th>
+                    <th className="p-3">Error Details</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -171,7 +172,7 @@ const Admin: React.FC = () => {
                     <tr key={index} className="border-b border-gray-700">
                       <td className="p-3 font-bold">{result.ticker}</td>
                       <td className="p-3 font-mono">
-                        {result.oldPrice !== undefined ? `$${result.oldPrice.toFixed(2)}` : '-'}
+                        {result.oldPrice !== undefined && result.oldPrice !== null ? `$${result.oldPrice.toFixed(2)}` : '-'}
                       </td>
                       <td className="p-3 font-mono">
                         {result.newPrice !== undefined ? `$${result.newPrice.toFixed(2)}` : '-'}
@@ -197,6 +198,9 @@ const Admin: React.FC = () => {
                             Failed
                           </span>
                         )}
+                      </td>
+                      <td className="p-3 text-xs text-red-400 max-w-md">
+                        {result.error || '-'}
                       </td>
                     </tr>
                   ))}
