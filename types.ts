@@ -1,5 +1,5 @@
 
-export type Page = 'dashboard' | 'intelligence' | 'accounts' | 'operations' | 'analytics';
+export type Page = 'dashboard' | 'intelligence' | 'accounts' | 'operations' | 'analytics' | 'admin';
 
 export enum TradeStatus {
   OPEN = 'open',

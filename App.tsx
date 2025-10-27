@@ -7,6 +7,7 @@ import Intelligence from './components/Intelligence';
 import Accounts from './components/Accounts';
 import Operations from './components/Operations';
 import Analytics from './components/Analytics';
+import Admin from './components/Admin';
 import type { Page, Account, Trade, WatchlistItem } from './types';
 import { MOCK_WATCHLIST } from './constants';
 import { TradeStatus, TradeType } from './types';
@@ -191,6 +192,8 @@ const App: React.FC = () => {
         return <Accounts accounts={accounts} addAccount={addAccount} removeAccount={removeAccount} updateAccount={updateAccount} trades={trades} />;
       case 'analytics':
         return <Analytics trades={trades} accounts={accounts} />;
+      case 'admin':
+        return <Admin />;
       default:
         return <Dashboard accounts={accounts} trades={trades} watchlist={watchlist} removeFromWatchlist={removeFromWatchlist} addTrade={addTrade} closeTrade={handleCloseTrade} />;
     }
@@ -223,6 +226,7 @@ const App: React.FC = () => {
           <NavItem page="operations" label="Operations" icon={<OperationsIcon />} />
           <NavItem page="analytics" label="Analytics" icon={<AnalyticsIcon />} />
           <NavItem page="accounts" label="Accounts" icon={<AccountsIcon />} />
+          <NavItem page="admin" label="Admin" icon={<i className="ri-settings-3-line text-xl"></i>} />
         </nav>
         <div className="mt-auto text-center text-gray-600 text-xs">
           <p>CFD Tracker Pro v1.0</p>
