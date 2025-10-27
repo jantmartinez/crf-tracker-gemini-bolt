@@ -13,14 +13,14 @@ interface Symbol {
 }
 
 interface FinnhubQuote {
-  c: number; // Current price
-  d: number; // Change
-  dp: number; // Percent change
-  h: number; // High price of the day
-  l: number; // Low price of the day
-  o: number; // Open price of the day
-  pc: number; // Previous close price
-  t: number; // Timestamp
+  c: number;
+  d: number;
+  dp: number;
+  h: number;
+  l: number;
+  o: number;
+  pc: number;
+  t: number;
 }
 
 Deno.serve(async (req: Request) => {
@@ -36,16 +36,29 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const finnhubApiKey = Deno.env.get('FINNHUB_API_KEY');
 
-    if (!finnhubApiKey) {
-      throw new Error('FINNHUB_API_KEY not configured');
+    console.log('Edge Function Environment Check:', {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasServiceKey: !!supabaseServiceKey,
+      hasFinnhubKey: !!finnhubApiKey,
+    });
+
+    if (!finnhubApiKey || finnhubApiKey === 'your_finnhub_api_key_here') {
+      return new Response(
+        JSON.stringify({
+          error: 'FINNHUB_API_KEY not configured. Please add your Finnhub API key to the environment variables.',
+          instruction: 'Get a free API key from https://finnhub.io/ and configure it in your Supabase project settings.',
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the triggering method from request body or default to 'manual'
     const { triggered_by = 'manual' } = await req.json().catch(() => ({ triggered_by: 'manual' }));
 
-    // Fetch all active symbols
     const { data: symbols, error: symbolsError } = await supabase
       .from('symbols')
       .select('id, ticker, latest_price')
@@ -57,7 +70,11 @@ Deno.serve(async (req: Request) => {
 
     if (!symbols || symbols.length === 0) {
       return new Response(
-        JSON.stringify({ message: 'No active symbols found', updated: 0 }),
+        JSON.stringify({ 
+          message: 'No active symbols found', 
+          summary: { total: 0, success: 0, failed: 0 },
+          results: [] 
+        }),
         {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -65,15 +82,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    console.log(`Updating prices for ${symbols.length} symbols`);
+
     const results = [];
     let successCount = 0;
     let failCount = 0;
 
-    // Update prices for each symbol
     for (const symbol of symbols as Symbol[]) {
       try {
-        // Fetch quote from Finnhub
         const finnhubUrl = `https://finnhub.io/api/v1/quote?symbol=${symbol.ticker}&token=${finnhubApiKey}`;
+        console.log(`Fetching price for ${symbol.ticker}`);
+        
         const response = await fetch(finnhubUrl);
         
         if (!response.ok) {
@@ -82,7 +101,6 @@ Deno.serve(async (req: Request) => {
 
         const quote: FinnhubQuote = await response.json();
         
-        // Check if we got valid data (current price > 0)
         if (!quote.c || quote.c <= 0) {
           throw new Error(`Invalid price data received for ${symbol.ticker}`);
         }
@@ -90,7 +108,6 @@ Deno.serve(async (req: Request) => {
         const oldPrice = symbol.latest_price;
         const newPrice = quote.c;
 
-        // Update the symbol's latest price
         const { error: updateError } = await supabase
           .from('symbols')
           .update({ latest_price: newPrice, updated_at: new Date().toISOString() })
@@ -100,7 +117,6 @@ Deno.serve(async (req: Request) => {
           throw new Error(`Failed to update price: ${updateError.message}`);
         }
 
-        // Log the successful update
         await supabase.from('price_update_log').insert({
           symbol_id: symbol.id,
           old_price: oldPrice,
@@ -118,11 +134,14 @@ Deno.serve(async (req: Request) => {
           change: newPrice - (oldPrice || 0),
           status: 'success',
         });
+
+        console.log(`✓ Updated ${symbol.ticker}: $${newPrice}`);
       } catch (error) {
         failCount++;
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         
-        // Log the failed update
+        console.error(`✗ Failed to update ${symbol.ticker}:`, errorMessage);
+        
         await supabase.from('price_update_log').insert({
           symbol_id: symbol.id,
           old_price: symbol.latest_price,
@@ -140,9 +159,10 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // Add a small delay to avoid rate limiting (Finnhub free tier: 60 calls/minute)
       await new Promise(resolve => setTimeout(resolve, 1100));
     }
+
+    console.log(`Price update completed: ${successCount} succeeded, ${failCount} failed`);
 
     return new Response(
       JSON.stringify({
@@ -164,6 +184,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : 'Unknown error occurred',
+        details: error instanceof Error ? error.stack : undefined,
       }),
       {
         status: 500,

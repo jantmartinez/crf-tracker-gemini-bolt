@@ -80,6 +80,15 @@ const Admin: React.FC = () => {
 
       const result = await response.json();
 
+      // Check if there's an error in the response
+      if (result.error) {
+        setUpdateMessage({
+          type: 'error',
+          text: result.error + (result.instruction ? ` ${result.instruction}` : ''),
+        });
+        return;
+      }
+
       setUpdateResults(result.results || []);
       setUpdateMessage({
         type: 'success',
