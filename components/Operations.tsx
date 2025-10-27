@@ -724,10 +724,13 @@ const PositionDetailsModal: React.FC<{
   const openDate = new Date(trade.openAt);
   const endDate = trade.closedAt ? new Date(trade.closedAt) : new Date();
   const daysHeld = Math.ceil((endDate.getTime() - openDate.getTime()) / (1000 * 60 * 60 * 24));
-  
-  // Current P&L (simplified - would need real-time price in production)
-  const currentPrice = trade.openPrice * 1.02; // Mock 2% gain for demo
-  const grossPnl = trade.tradeType === TradeType.LONG 
+
+  // Use actual latest price from the database, fallback to close price for closed trades
+  const currentPrice = trade.status === TradeStatus.CLOSED
+    ? (trade.closePrice || trade.openPrice)
+    : (trade.latestPrice || trade.openPrice);
+
+  const grossPnl = trade.tradeType === TradeType.LONG
     ? (currentPrice - trade.openPrice) * trade.quantity
     : (trade.openPrice - currentPrice) * trade.quantity;
   const netPnl = trade.pnl || (grossPnl - totalFees);

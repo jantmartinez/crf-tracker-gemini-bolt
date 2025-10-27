@@ -326,7 +326,8 @@ export const fetchTrades = async (): Promise<Trade[]> => {
         total: totalFees
       },
       originalQuantity,
-      isPartiallyCloseD
+      isPartiallyCloseD,
+      latestPrice: group.symbols?.latest_price
     };
   });
 };

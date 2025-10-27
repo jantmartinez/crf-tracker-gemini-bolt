@@ -33,6 +33,7 @@ export interface Trade {
   };
   originalQuantity?: number; // Original opening quantity
   isPartiallyCloseD?: boolean; // Whether the position has been partially closed
+  latestPrice?: number; // Latest price from symbols table
 }
 
 export interface Account {
