@@ -88,6 +88,48 @@ export const getMonthCalendarData = (trades: Trade[], year: number, month: numbe
   };
 };
 
+export interface MonthSummary {
+  month: number;
+  monthName: string;
+  pnl: number;
+  tradeCount: number;
+  winCount: number;
+  winRate: number;
+  fees: number;
+}
+
+export const getYearCalendarData = (trades: Trade[], year: number): MonthSummary[] => {
+  const months: MonthSummary[] = [];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  for (let month = 0; month < 12; month++) {
+    const monthData = getMonthCalendarData(trades, year, month);
+
+    const monthTrades = trades.filter(trade => {
+      if (trade.status !== TradeStatus.CLOSED || !trade.closedAt) return false;
+      const tradeDate = new Date(trade.closedAt);
+      return tradeDate.getFullYear() === year && tradeDate.getMonth() === month;
+    });
+
+    const winCount = monthTrades.filter(t => (t.pnl ?? 0) > 0).length;
+    const totalPnl = monthTrades.reduce((sum, t) => sum + (t.pnl ?? 0), 0);
+    const totalFees = monthTrades.reduce((sum, t) => sum + (t.fees?.total ?? 0), 0);
+    const winRate = monthTrades.length > 0 ? (winCount / monthTrades.length) * 100 : 0;
+
+    months.push({
+      month,
+      monthName: monthNames[month],
+      pnl: totalPnl,
+      tradeCount: monthTrades.length,
+      winCount,
+      winRate,
+      fees: totalFees,
+    });
+  }
+
+  return months;
+};
+
 export const calculatePerformanceMetrics = (trades: Trade[]): PerformanceMetrics => {
   const closedTrades = trades.filter(t => t.status === TradeStatus.CLOSED);
 

@@ -3,6 +3,7 @@ import type { Trade, Account } from '../types';
 import {
   calculatePerformanceMetrics,
   getMonthCalendarData,
+  getYearCalendarData,
   calculateTimeBasedMetrics,
   getMonthlyPnlData,
   getSymbolDistribution,
@@ -34,6 +35,7 @@ type TabType = 'calendar' | 'reports';
 const Analytics: React.FC<AnalyticsProps> = ({ trades, accounts }) => {
   const [activeTab, setActiveTab] = useState<TabType>('calendar');
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [calendarView, setCalendarView] = useState<'month' | 'year'>('month');
 
   const currentYear = selectedDate.getFullYear();
   const currentMonth = selectedDate.getMonth();
@@ -41,6 +43,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ trades, accounts }) => {
   const calendarData = useMemo(
     () => getMonthCalendarData(trades, currentYear, currentMonth),
     [trades, currentYear, currentMonth]
+  );
+
+  const yearCalendarData = useMemo(
+    () => getYearCalendarData(trades, currentYear),
+    [trades, currentYear]
   );
 
   const performanceMetrics = useMemo(() => calculatePerformanceMetrics(trades), [trades]);
@@ -54,6 +61,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ trades, accounts }) => {
 
   const nextMonth = () => {
     setSelectedDate(new Date(currentYear, currentMonth + 1, 1));
+  };
+
+  const previousYear = () => {
+    setSelectedDate(new Date(currentYear - 1, currentMonth, 1));
+  };
+
+  const nextYear = () => {
+    setSelectedDate(new Date(currentYear + 1, currentMonth, 1));
   };
 
   const monthName = selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -95,13 +110,23 @@ const Analytics: React.FC<AnalyticsProps> = ({ trades, accounts }) => {
       {activeTab === 'calendar' && (
         <CalendarTab
           calendarData={calendarData}
+          yearCalendarData={yearCalendarData}
           monthName={monthName}
+          currentYear={currentYear}
           firstDayOfMonth={firstDayOfMonth}
           previousMonth={previousMonth}
           nextMonth={nextMonth}
+          previousYear={previousYear}
+          nextYear={nextYear}
           monthlyTotalPnl={monthlyTotalPnl}
           monthlyTotalTrades={monthlyTotalTrades}
           monthlyWinRate={monthlyWinRate}
+          calendarView={calendarView}
+          setCalendarView={setCalendarView}
+          onMonthClick={(month: number) => {
+            setSelectedDate(new Date(currentYear, month, 1));
+            setCalendarView('month');
+          }}
         />
       )}
 
@@ -119,24 +144,38 @@ const Analytics: React.FC<AnalyticsProps> = ({ trades, accounts }) => {
 
 interface CalendarTabProps {
   calendarData: ReturnType<typeof getMonthCalendarData>;
+  yearCalendarData: ReturnType<typeof getYearCalendarData>;
   monthName: string;
+  currentYear: number;
   firstDayOfMonth: number;
   previousMonth: () => void;
   nextMonth: () => void;
+  previousYear: () => void;
+  nextYear: () => void;
   monthlyTotalPnl: number;
   monthlyTotalTrades: number;
   monthlyWinRate: number;
+  calendarView: 'month' | 'year';
+  setCalendarView: (view: 'month' | 'year') => void;
+  onMonthClick: (month: number) => void;
 }
 
 const CalendarTab: React.FC<CalendarTabProps> = ({
   calendarData,
+  yearCalendarData,
   monthName,
+  currentYear,
   firstDayOfMonth,
   previousMonth,
   nextMonth,
+  previousYear,
+  nextYear,
   monthlyTotalPnl,
   monthlyTotalTrades,
   monthlyWinRate,
+  calendarView,
+  setCalendarView,
+  onMonthClick,
 }) => {
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -159,36 +198,165 @@ const CalendarTab: React.FC<CalendarTabProps> = ({
 
   const weeklyTotals = calculateWeeklyTotals();
 
+  const yearlyTotalPnl = yearCalendarData.reduce((sum, month) => sum + month.pnl, 0);
+  const yearlyTotalTrades = yearCalendarData.reduce((sum, month) => sum + month.tradeCount, 0);
+  const yearlyWinCount = yearCalendarData.reduce((sum, month) => sum + month.winCount, 0);
+  const yearlyWinRate = yearlyTotalTrades > 0 ? (yearlyWinCount / yearlyTotalTrades) * 100 : 0;
+
   return (
     <div className="space-y-6">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-        <div className="flex items-center justify-between mb-6">
+      <div className="flex justify-between items-center">
+        <div className="flex space-x-1 bg-gray-800 p-1 rounded-lg">
           <button
-            onClick={previousMonth}
-            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            onClick={() => setCalendarView('month')}
+            className={`px-4 py-2 rounded-md font-medium transition-all ${
+              calendarView === 'month'
+                ? 'bg-brand-blue text-white shadow-lg'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
           >
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            Month
           </button>
-          <div className="flex items-center gap-8">
-            <h2 className="text-2xl font-bold text-gray-200">{monthName}</h2>
-            <div className="bg-gray-700/50 px-4 py-2 rounded-lg border border-gray-600">
-              <p className="text-xs text-gray-400 uppercase mb-1">Monthly Total</p>
-              <p className={`text-xl font-bold ${monthlyTotalPnl >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>
-                ${monthlyTotalPnl.toFixed(2)}
+          <button
+            onClick={() => setCalendarView('year')}
+            className={`px-4 py-2 rounded-md font-medium transition-all ${
+              calendarView === 'year'
+                ? 'bg-brand-blue text-white shadow-lg'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            Year
+          </button>
+        </div>
+      </div>
+
+      {calendarView === 'year' ? (
+        <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={previousYear}
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div className="flex items-center gap-8">
+              <h2 className="text-2xl font-bold text-gray-200">{currentYear}</h2>
+              <div className="bg-gray-700/50 px-4 py-2 rounded-lg border border-gray-600">
+                <p className="text-xs text-gray-400 uppercase mb-1">Yearly Total</p>
+                <p className={`text-xl font-bold ${yearlyTotalPnl >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>
+                  ${yearlyTotalPnl.toFixed(2)}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={nextYear}
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            {yearCalendarData.map((monthData) => {
+              const isProfit = monthData.pnl >= 0;
+              const hasTrades = monthData.tradeCount > 0;
+
+              return (
+                <div
+                  key={monthData.month}
+                  onClick={() => hasTrades && onMonthClick(monthData.month)}
+                  className={`${
+                    hasTrades
+                      ? isProfit
+                        ? 'bg-green-500/20 border-green-500/50 cursor-pointer hover:bg-green-500/30'
+                        : 'bg-red-500/20 border-red-500/50 cursor-pointer hover:bg-red-500/30'
+                      : 'bg-gray-700/30 border-gray-600/30'
+                  } border-2 rounded-lg p-6 transition-all`}
+                >
+                  <h3 className="text-lg font-bold text-gray-200 mb-3">{monthData.monthName}</h3>
+
+                  {hasTrades ? (
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-xs text-gray-400 uppercase mb-1">P&L</p>
+                        <p className={`text-2xl font-bold ${isProfit ? 'text-brand-green' : 'text-brand-red'}`}>
+                          ${monthData.pnl.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-600/50">
+                        <div>
+                          <p className="text-xs text-gray-400">Trades</p>
+                          <p className="text-sm font-semibold text-gray-200">{monthData.tradeCount}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400">Win Rate</p>
+                          <p className={`text-sm font-semibold ${monthData.winRate >= 50 ? 'text-brand-green' : 'text-brand-red'}`}>
+                            {monthData.winRate.toFixed(1)}%
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">No trades</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            <div className="bg-gray-700/50 p-6 rounded-lg">
+              <h3 className="text-gray-400 text-sm font-medium uppercase mb-2">Yearly P&L</h3>
+              <p className={`text-3xl font-bold ${yearlyTotalPnl >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>
+                ${yearlyTotalPnl.toFixed(2)}
+              </p>
+            </div>
+            <div className="bg-gray-700/50 p-6 rounded-lg">
+              <h3 className="text-gray-400 text-sm font-medium uppercase mb-2">Total Trades</h3>
+              <p className="text-3xl font-bold text-gray-200">{yearlyTotalTrades}</p>
+            </div>
+            <div className="bg-gray-700/50 p-6 rounded-lg">
+              <h3 className="text-gray-400 text-sm font-medium uppercase mb-2">Win Rate</h3>
+              <p className={`text-3xl font-bold ${yearlyWinRate >= 50 ? 'text-brand-green' : 'text-brand-red'}`}>
+                {yearlyWinRate.toFixed(1)}%
               </p>
             </div>
           </div>
-          <button
-            onClick={nextMonth}
-            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
         </div>
+      ) : (
+        <>
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <div className="flex items-center justify-between mb-6">
+              <button
+                onClick={previousMonth}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div className="flex items-center gap-8">
+                <h2 className="text-2xl font-bold text-gray-200">{monthName}</h2>
+                <div className="bg-gray-700/50 px-4 py-2 rounded-lg border border-gray-600">
+                  <p className="text-xs text-gray-400 uppercase mb-1">Monthly Total</p>
+                  <p className={`text-xl font-bold ${monthlyTotalPnl >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>
+                    ${monthlyTotalPnl.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={nextMonth}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
 
         <div className="grid grid-cols-8 gap-2 mb-2">
           {weekDays.map(day => (
@@ -285,24 +453,26 @@ const CalendarTab: React.FC<CalendarTabProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-          <h3 className="text-gray-400 text-sm font-medium uppercase mb-2">Monthly P&L</h3>
-          <p className={`text-3xl font-bold ${monthlyTotalPnl >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>
-            ${monthlyTotalPnl.toFixed(2)}
-          </p>
-        </div>
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-          <h3 className="text-gray-400 text-sm font-medium uppercase mb-2">Total Trades</h3>
-          <p className="text-3xl font-bold text-gray-200">{monthlyTotalTrades}</p>
-        </div>
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-          <h3 className="text-gray-400 text-sm font-medium uppercase mb-2">Win Rate</h3>
-          <p className={`text-3xl font-bold ${monthlyWinRate >= 50 ? 'text-brand-green' : 'text-brand-red'}`}>
-            {monthlyWinRate.toFixed(1)}%
-          </p>
-        </div>
-      </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+              <h3 className="text-gray-400 text-sm font-medium uppercase mb-2">Monthly P&L</h3>
+              <p className={`text-3xl font-bold ${monthlyTotalPnl >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>
+                ${monthlyTotalPnl.toFixed(2)}
+              </p>
+            </div>
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+              <h3 className="text-gray-400 text-sm font-medium uppercase mb-2">Total Trades</h3>
+              <p className="text-3xl font-bold text-gray-200">{monthlyTotalTrades}</p>
+            </div>
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+              <h3 className="text-gray-400 text-sm font-medium uppercase mb-2">Win Rate</h3>
+              <p className={`text-3xl font-bold ${monthlyWinRate >= 50 ? 'text-brand-green' : 'text-brand-red'}`}>
+                {monthlyWinRate.toFixed(1)}%
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
