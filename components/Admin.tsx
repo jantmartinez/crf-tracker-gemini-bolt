@@ -32,25 +32,64 @@ const Admin: React.FC = () => {
   const [logs, setLogs] = useState<PriceUpdateLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [updateResults, setUpdateResults] = useState<UpdateResult[] | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [latestUpdate, setLatestUpdate] = useState<{ date: string; count: number; successCount: number } | null>(null);
 
   useEffect(() => {
     fetchLogs();
   }, []);
 
-  const fetchLogs = async () => {
+  const handleDateFilter = (date: string) => {
+    setSelectedDate(date);
+    if (date) {
+      fetchLogs(date);
+    } else {
+      fetchLogs();
+    }
+  };
+
+  const fetchLogs = async (filterDate?: string) => {
     setIsLoadingLogs(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('price_update_log')
         .select(`
           *,
           symbols (ticker, name)
-        `)
+        `);
+
+      if (filterDate) {
+        const startOfDay = new Date(filterDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(filterDate);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        query = query
+          .gte('created_at', startOfDay.toISOString())
+          .lte('created_at', endOfDay.toISOString());
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(200);
 
       if (error) throw error;
       setLogs(data || []);
+
+      if (!filterDate && data && data.length > 0) {
+        const latest = data[0];
+        const latestDate = new Date(latest.created_at).toISOString().split('T')[0];
+        const logsFromLatest = data.filter(log =>
+          new Date(log.created_at).toISOString().split('T')[0] === latestDate
+        );
+        const successCount = logsFromLatest.filter(log => log.status === 'success').length;
+
+        setLatestUpdate({
+          date: latestDate,
+          count: logsFromLatest.length,
+          successCount
+        });
+      }
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
@@ -215,13 +254,60 @@ const Admin: React.FC = () => {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-200">Price Update History</h2>
           <button
-            onClick={fetchLogs}
+            onClick={() => fetchLogs()}
             disabled={isLoadingLogs}
             className="text-gray-400 hover:text-brand-blue transition-colors"
             title="Refresh logs"
           >
             <i className={`ri-refresh-line text-lg ${isLoadingLogs ? 'animate-spin' : ''}`}></i>
           </button>
+        </div>
+
+        {latestUpdate && !selectedDate && (
+          <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-300 mb-1">Latest Update</h3>
+                <p className="text-xs text-gray-400">
+                  {new Date(latestUpdate.date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-gray-200">{latestUpdate.count}</p>
+                <p className="text-xs text-gray-400">
+                  {latestUpdate.successCount} successful, {latestUpdate.count - latestUpdate.successCount} failed
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="mb-4">
+          <label htmlFor="dateFilter" className="block text-sm font-medium text-gray-400 mb-2">
+            Filter by Date
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="dateFilter"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => handleDateFilter(e.target.value)}
+              className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+            />
+            {selectedDate && (
+              <button
+                onClick={() => handleDateFilter('')}
+                className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Clear Filter
+              </button>
+            )}
+          </div>
         </div>
 
         {isLoadingLogs ? (
