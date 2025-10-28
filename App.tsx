@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>(MOCK_WATCHLIST);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Load data from Supabase on component mount
   useEffect(() => {
@@ -201,10 +202,13 @@ const App: React.FC = () => {
 
   const NavItem: React.FC<{ page: Page; label: string; icon: React.ReactNode }> = ({ page, label, icon }) => (
     <button
-      onClick={() => setActivePage(page)}
+      onClick={() => {
+        setActivePage(page);
+        setIsMobileMenuOpen(false);
+      }}
       className={`flex items-center w-full px-4 py-3 text-left transition-colors duration-200 rounded-lg ${
-        activePage === page 
-          ? 'bg-brand-blue text-white shadow-lg' 
+        activePage === page
+          ? 'bg-brand-blue text-white shadow-lg'
           : 'text-gray-400 hover:bg-gray-700 hover:text-gray-200'
       }`}
     >
@@ -215,8 +219,28 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-900 font-sans">
-      <aside className="w-64 bg-gray-800 p-4 flex flex-col border-r border-gray-700">
-        <div className="flex items-center mb-10 px-2">
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 bg-gray-800 text-gray-200 p-3 rounded-lg shadow-lg border border-gray-700 hover:bg-gray-700 transition-colors"
+        aria-label="Toggle menu"
+      >
+        <i className={`ri-${isMobileMenuOpen ? 'close' : 'menu'}-line text-2xl`}></i>
+      </button>
+
+      {isMobileMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      <aside className={`
+        fixed lg:static inset-y-0 left-0 z-40
+        w-64 bg-gray-800 p-4 flex flex-col border-r border-gray-700
+        transform transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        <div className="flex items-center mb-10 px-2 mt-12 lg:mt-0">
           <LogoIcon />
           <h1 className="text-xl font-bold ml-2 text-gray-200">CFD Tracker</h1>
         </div>
@@ -233,7 +257,7 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         {renderPage()}
       </main>
     </div>

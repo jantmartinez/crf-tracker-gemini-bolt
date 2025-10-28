@@ -260,7 +260,7 @@ const CalendarTab: React.FC<CalendarTabProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {yearCalendarData.map((monthData) => {
               const isProfit = monthData.pnl >= 0;
               const hasTrades = monthData.tradeCount > 0;
@@ -358,18 +358,18 @@ const CalendarTab: React.FC<CalendarTabProps> = ({
               </button>
             </div>
 
-        <div className="grid grid-cols-8 gap-2 mb-2">
+        <div className="grid grid-cols-8 gap-1 sm:gap-2 mb-2">
           {weekDays.map(day => (
-            <div key={day} className="text-center text-gray-400 font-semibold text-sm py-2">
+            <div key={day} className="text-center text-gray-400 font-semibold text-xs sm:text-sm py-2">
               {day}
             </div>
           ))}
-          <div className="text-center text-gray-400 font-semibold text-sm py-2">
+          <div className="text-center text-gray-400 font-semibold text-xs sm:text-sm py-2">
             Week
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1 sm:space-y-2">
           {weeklyTotals.map((weekTotal, weekIndex) => {
             const weekStart = weekIndex * 7;
             const weekEnd = weekStart + 7;
@@ -377,7 +377,7 @@ const CalendarTab: React.FC<CalendarTabProps> = ({
             const isWeekProfit = weekTotal.pnl >= 0;
 
             return (
-              <div key={`week-${weekIndex}`} className="grid grid-cols-8 gap-2">
+              <div key={`week-${weekIndex}`} className="grid grid-cols-8 gap-1 sm:gap-2">
                 {weekDays.map((dayData, dayIndex) => {
                   const index = weekStart + dayIndex;
 
@@ -390,9 +390,9 @@ const CalendarTab: React.FC<CalendarTabProps> = ({
                     return (
                       <div
                         key={`day-${dayNumber}`}
-                        className="aspect-square bg-gray-700/30 rounded-lg p-2 flex flex-col"
+                        className="aspect-square bg-gray-700/30 rounded-lg p-1 sm:p-2 flex flex-col"
                       >
-                        <span className="text-gray-500 text-sm font-medium">{dayNumber}</span>
+                        <span className="text-gray-500 text-xs sm:text-sm font-medium">{dayNumber}</span>
                       </div>
                     );
                   }
@@ -404,15 +404,15 @@ const CalendarTab: React.FC<CalendarTabProps> = ({
                   return (
                     <div
                       key={`day-${dayNumber}`}
-                      className={`aspect-square ${bgColor} border rounded-lg p-2 flex flex-col hover:shadow-lg transition-shadow cursor-pointer group relative`}
+                      className={`aspect-square ${bgColor} border rounded-lg p-1 sm:p-2 flex flex-col hover:shadow-lg transition-shadow cursor-pointer group relative`}
                       title={`${dayData.tradeCount} trades | Win Rate: ${dayData.winRate.toFixed(1)}% | P&L: $${dayData.pnl.toFixed(2)}`}
                     >
-                      <span className="text-gray-200 text-sm font-medium">{dayNumber}</span>
+                      <span className="text-gray-200 text-xs sm:text-sm font-medium">{dayNumber}</span>
                       <div className="flex-1 flex flex-col justify-center">
                         <p className={`text-xs font-bold ${isProfit ? 'text-brand-green' : 'text-brand-red'}`}>
                           ${dayData.pnl.toFixed(0)}
                         </p>
-                        <p className="text-xs text-gray-400">{dayData.tradeCount} trades</p>
+                        <p className="text-[10px] sm:text-xs text-gray-400">{dayData.tradeCount}</p>
                       </div>
 
                       <div className="absolute top-full left-0 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg p-3 shadow-xl z-10 hidden group-hover:block">
