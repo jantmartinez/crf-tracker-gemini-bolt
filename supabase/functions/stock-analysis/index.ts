@@ -89,7 +89,7 @@ Deno.serve(async (req: Request) => {
       required: ['symbol', 'companyName', 'exchange', 'currentPrice', 'analystConsensus', 'technicals', 'news'],
     };
 
-    const prompt = `Generate a real stock analysis for the ticker symbol: ${ticker.toUpperCase()}. The company should be plausible for the given ticker. Provide a comprehensive analysis including company info, analyst consensus, technical indicators, and recent news articles. Format the entire response as a single JSON object conforming to the provided schema. Ensure the news timestamps are recent and realistic.`;
+    const prompt = `Generate a real stock analysis for the ticker symbol: ${ticker.toUpperCase()}. Provide a comprehensive analysis including company info, analyst consensus, technical indicators, and recent news articles. Format the entire response as a single JSON object conforming to the provided schema. Ensure the news timestamps are recent and real.`;
 
     const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
